@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
 import { toast } from "@/components/ui/toast-utils";
 import {
@@ -43,6 +44,7 @@ interface CustomerFormData {
 }
 
 const Customers = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -129,6 +131,10 @@ const Customers = () => {
     
     setDeleteDialogOpen(false);
     setSelectedCustomer(null);
+  };
+  
+  const handleViewCustomer = (customerId: string) => {
+    navigate(`/customers/${customerId}`);
   };
   
   const getTotalBalance = () => {
@@ -321,7 +327,7 @@ const Customers = () => {
                 </TableRow>
               ) : (
                 filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id} className="cursor-pointer hover:bg-gray-50" onDoubleClick={() => handleEdit(customer.id)}>
+                  <TableRow key={customer.id} className="cursor-pointer hover:bg-gray-50" onDoubleClick={() => handleViewCustomer(customer.id)}>
                     <TableCell>{customer.id}</TableCell>
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>{customer.address}</TableCell>
@@ -329,11 +335,14 @@ const Customers = () => {
                     <TableCell>{customer.pan}</TableCell>
                     <TableCell className="text-right">
                       <span className={customer.type === "DR" ? "text-vyc-error" : "text-vyc-success"}>
-                        {formatCurrency(customer.balance)} {customer.type}
+                        रू {formatCurrency(customer.balance)} {customer.type}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleViewCustomer(customer.id)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(customer.id)}>
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -359,7 +368,7 @@ const Customers = () => {
               <div className="text-sm">Total Balance</div>
               <div className="text-lg font-bold">
                 <span className={totalBalance.type === "DR" ? "text-vyc-error" : "text-vyc-success"}>
-                  {formatCurrency(totalBalance.amount)} {totalBalance.type}
+                  रू {formatCurrency(totalBalance.amount)} {totalBalance.type}
                 </span>
               </div>
             </div>
