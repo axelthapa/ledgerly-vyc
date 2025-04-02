@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Mock customer data
 const mockCustomers = [
   { id: "CN001", name: "John Doe", address: "Kathmandu, Nepal", phone: "9801234567", pan: "123456789", balance: 15000, type: "CR" },
   { id: "CN002", name: "Sarah Smith", address: "Pokhara, Nepal", phone: "9807654321", pan: "987654321", balance: -5000, type: "DR" },
@@ -67,7 +65,15 @@ const Customers = () => {
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    
+    if (name === "balanceType") {
+      setFormData({ 
+        ...formData, 
+        [name]: value === "CR" || value === "DR" ? value : "CR" 
+      });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,12 +82,10 @@ const Customers = () => {
   };
   
   const confirmSave = () => {
-    // In a real app, we would save the customer to the database
     console.log("Customer data to save:", formData);
     
     toast.success("Customer added successfully!");
     
-    // Reset form and close dialogs
     setFormData({
       name: "",
       address: "",
@@ -95,16 +99,19 @@ const Customers = () => {
   };
   
   const handleEdit = (customerId: string) => {
-    // Find the customer to edit
     const customer = mockCustomers.find(c => c.id === customerId);
     if (customer) {
+      const balanceType: "CR" | "DR" = customer.type === "CR" || customer.type === "DR" 
+        ? customer.type 
+        : "CR";
+        
       setFormData({
         name: customer.name,
         address: customer.address,
         phone: customer.phone,
         pan: customer.pan,
         openingBalance: Math.abs(customer.balance),
-        balanceType: customer.type,
+        balanceType: balanceType,
       });
       setDialogOpen(true);
     }
@@ -116,7 +123,6 @@ const Customers = () => {
   };
   
   const confirmDelete = () => {
-    // In a real app, we would delete the customer from the database
     console.log("Deleting customer:", selectedCustomer);
     
     toast.success("Customer deleted successfully!");
@@ -246,7 +252,6 @@ const Customers = () => {
             </DialogContent>
           </Dialog>
           
-          {/* Confirm Save Dialog */}
           <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -264,7 +269,6 @@ const Customers = () => {
             </AlertDialogContent>
           </AlertDialog>
           
-          {/* Confirm Delete Dialog */}
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
