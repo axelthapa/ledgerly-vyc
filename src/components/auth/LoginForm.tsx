@@ -6,7 +6,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast-utils";
-import { Eye, EyeOff, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, User, KeyRound } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Mock admin users
 const ADMIN_USERS = [
@@ -17,78 +29,84 @@ const ADMIN_USERS = [
 const LoginForm = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationKey, setVerificationKey] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [validationKey, setValidationKey] = useState("");
-  const [enteredKey, setEnteredKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [stage, setStage] = useState<"username" | "password" | "key">("username");
-
-  // Generate random validation key
-  useEffect(() => {
-    if (stage === "key") {
-      const randomKey = Math.floor(1000 + Math.random() * 9000).toString();
-      setValidationKey(randomKey);
-      console.log("Generated key:", randomKey);
+  const [loginAttempt, setLoginAttempt] = useState(false);
+  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [isValidationKeyGenerated, setIsValidationKeyGenerated] = useState(false);
+  
+  // Generate random validation key without 0
+  const generateValidationKey = () => {
+    const digits = "123456789"; // Exclude 0
+    let key = "";
+    for (let i = 0; i < 4; i++) {
+      key += digits.charAt(Math.floor(Math.random() * digits.length));
     }
-  }, [stage]);
-
-  const handleUsernameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Check if username exists
-    const userExists = ADMIN_USERS.some(user => user.username.toLowerCase() === username.toLowerCase());
-    
-    if (userExists) {
-      setStage("password");
-      toast.success("Username verified! Please enter your password.");
-    } else {
-      toast.error("Username not found. Please try again.");
-    }
+    setValidationKey(key);
+    setIsValidationKeyGenerated(true);
+    return key;
   };
-
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Check if password matches
-    const user = ADMIN_USERS.find(user => user.username.toLowerCase() === username.toLowerCase());
-    
-    if (user && user.password === password) {
-      setStage("key");
-      toast.success("Password verified! Please enter the verification key.");
-    } else {
-      toast.error("Incorrect password. Please try again.");
-    }
-  };
-
-  const handleKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Convert number to corresponding letters (1=a, 2=b, etc.)
-    const expectedKey = validationKey
+  
+  // Convert number to corresponding letters (1=a, 2=b, etc.)
+  const convertToLetters = (key: string) => {
+    return key
       .split("")
       .map(digit => String.fromCharCode(96 + parseInt(digit)))
       .join("");
-    
-    if (enteredKey.toLowerCase() === expectedKey) {
-      // Login successful
-      toast.success("Login successful! Redirecting to dashboard...");
-      
-      // Save username in localStorage if "Remember Me" is checked
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", username);
-      } else {
-        localStorage.removeItem("rememberedUsername");
-      }
-      
-      // Redirect to dashboard (would use React Router in a real implementation)
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1500);
-    } else {
-      toast.error("Incorrect verification key. Please try again.");
-    }
   };
-
+  
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate username and password first
+    const user = ADMIN_USERS.find(user => user.username.toLowerCase() === username.toLowerCase());
+    
+    if (!user) {
+      toast.error("Invalid username. Please try again.");
+      return;
+    }
+    
+    if (user.password !== password) {
+      toast.error("Invalid password. Please try again.");
+      return;
+    }
+    
+    if (!isValidationKeyGenerated) {
+      // First login attempt - generate key and wait for verification
+      const key = generateValidationKey();
+      console.log("Generated verification key:", key);
+      console.log("Expected input:", convertToLetters(key));
+      setLoginAttempt(true);
+      toast.success("Username and password verified. Please enter the verification key.");
+      return;
+    }
+    
+    // Verify the validation key
+    const expectedKey = convertToLetters(validationKey);
+    
+    if (verificationKey.toLowerCase() !== expectedKey) {
+      toast.error("Incorrect verification key. Please try again.");
+      return;
+    }
+    
+    // Login successful
+    toast.success("Login successful! Redirecting to dashboard...");
+    
+    // Save username in localStorage if "Remember Me" is checked
+    if (rememberMe) {
+      localStorage.setItem("rememberedUsername", username);
+    } else {
+      localStorage.removeItem("rememberedUsername");
+    }
+    
+    // Redirect to dashboard
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 1500);
+  };
+  
   // Load remembered username if available
   useEffect(() => {
     const savedUsername = localStorage.getItem("rememberedUsername");
@@ -97,11 +115,22 @@ const LoginForm = () => {
       setRememberMe(true);
     }
   }, []);
-
+  
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
-
+  
+  const handleExit = () => {
+    setIsExitDialogOpen(true);
+  };
+  
+  const confirmExit = () => {
+    // In a real app, you might want to clear any sensitive data
+    window.close();
+    // Fallback if window.close() doesn't work (some browsers block it)
+    window.location.href = "about:blank";
+  };
+  
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
       <Card className="w-full max-w-md shadow-xl">
@@ -117,120 +146,113 @@ const LoginForm = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {stage === "username" && (
-            <form onSubmit={handleUsernameSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-3 text-gray-400">
-                    <User size={18} />
-                  </div>
-                  <Input
-                    id="username"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10"
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(!!checked)}
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  Remember me
-                </label>
-              </div>
-              <Button type="submit" className="w-full bg-vyc-primary hover:bg-vyc-primary-dark">
-                Continue
-              </Button>
-            </form>
-          )}
-
-          {stage === "password" && (
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-3 text-gray-400">
-                    <Lock size={18} />
-                  </div>
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                    required
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute right-3 top-3 text-gray-400"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStage("username")}
-                >
-                  Back
-                </Button>
-                <Button type="submit" className="bg-vyc-primary hover:bg-vyc-primary-dark">
-                  Verify Password
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {stage === "key" && (
-            <form onSubmit={handleKeySubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="key">Verification Key</Label>
-                <div className="mb-2 p-3 bg-gray-100 rounded text-center">
-                  <p className="text-sm text-gray-600">Your verification number is:</p>
-                  <p className="text-xl font-bold">{validationKey}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Convert each digit to its corresponding letter (1=a, 2=b, etc.)
-                  </p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">
+                  <User size={18} />
                 </div>
                 <Input
-                  id="key"
-                  placeholder="Enter the verification key"
-                  value={enteredKey}
-                  onChange={(e) => setEnteredKey(e.target.value)}
+                  id="username"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="pl-10"
                   required
                   autoFocus
                 />
               </div>
-              <div className="flex justify-between">
-                <Button
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">
+                  <Lock size={18} />
+                </div>
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10"
+                  required
+                />
+                <button
                   type="button"
-                  variant="outline"
-                  onClick={() => setStage("password")}
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-3 text-gray-400"
                 >
-                  Back
-                </Button>
-                <Button type="submit" className="bg-vyc-primary hover:bg-vyc-primary-dark">
-                  Login
-                </Button>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-            </form>
-          )}
+            </div>
+            
+            {isValidationKeyGenerated && (
+              <div className="space-y-2">
+                <Label htmlFor="verificationKey">Verification Key</Label>
+                <div className="relative">
+                  <div className="absolute left-3 top-3 text-gray-400">
+                    <KeyRound size={18} />
+                  </div>
+                  <Input
+                    id="verificationKey"
+                    placeholder="Enter verification key"
+                    value={verificationKey}
+                    onChange={(e) => setVerificationKey(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the verification key (convert each digit to its corresponding letter)
+                </p>
+              </div>
+            )}
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(!!checked)}
+              />
+              <label
+                htmlFor="remember"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Remember me
+              </label>
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button type="submit" className="w-full bg-vyc-primary hover:bg-vyc-primary-dark">
+                {loginAttempt ? "Verify & Login" : "Login"}
+              </Button>
+              <AlertDialog open={isExitDialogOpen} onOpenChange={setIsExitDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="outline" onClick={handleExit}>
+                    Exit
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to exit?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You will be logged out of the application.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmExit} className="bg-red-600 hover:bg-red-700">
+                      Yes, Exit
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </form>
         </CardContent>
         <CardFooter className="flex flex-col">
           <p className="text-xs text-center text-gray-500 mt-2">
@@ -238,6 +260,21 @@ const LoginForm = () => {
           </p>
         </CardFooter>
       </Card>
+      
+      {/* Randomly generated key dialog for debugging - will be removed in production */}
+      {isValidationKeyGenerated && (
+        <Dialog open={false}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Debug Info (Remove in Production)</DialogTitle>
+            </DialogHeader>
+            <div>
+              <p>Generated Key: {validationKey}</p>
+              <p>Expected Input: {convertToLetters(validationKey)}</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

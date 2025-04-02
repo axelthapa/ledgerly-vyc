@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNepaliDate, formatNepaliDateNP } from "@/utils/nepali-date";
 import NepalFlag from "./NepalFlag";
+import { CalendarDays, Clock } from "lucide-react";
 
 const DateTimeDisplay: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -24,6 +25,15 @@ const DateTimeDisplay: React.FC = () => {
     });
   };
   
+  const formatEnglishDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+  
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
@@ -38,27 +48,25 @@ const DateTimeDisplay: React.FC = () => {
         </div>
         
         <div className="p-6 space-y-4">
-          <div className="text-center">
-            <div className="text-4xl font-bold">{formatTime(currentTime)}</div>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4 mt-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-500">English Date</p>
-              <p className="text-xl font-medium">
-                {currentTime.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
+          <div className="grid grid-cols-1 gap-4">
+            <div className="text-center">
+              <div className="flex justify-center items-center gap-2 mb-2">
+                <Clock className="h-5 w-5 text-vyc-primary" />
+                <div className="text-3xl font-bold">{formatTime(currentTime)}</div>
+              </div>
+              
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <CalendarDays className="h-5 w-5 text-vyc-primary" />
+                <p className="text-md text-gray-600">
+                  {formatEnglishDate(currentTime)}
+                </p>
+              </div>
             </div>
             
             <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-500">Nepali Date</p>
-              <p className="text-xl font-medium">{formatNepaliDate(currentTime)}</p>
-              <p className="text-lg font-medium">{formatNepaliDateNP(currentTime)}</p>
+              <p className="text-sm text-gray-500">नेपाली मिति</p>
+              <p className="text-2xl font-medium">{formatNepaliDateNP(currentTime)}</p>
+              <p className="text-md text-gray-600">{formatNepaliDate(currentTime)}</p>
             </div>
           </div>
         </div>

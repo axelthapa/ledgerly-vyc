@@ -11,9 +11,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
+import { toast } from "@/components/ui/toast-utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Mock customer data
 const mockCustomers = [
@@ -36,6 +47,9 @@ interface CustomerFormData {
 const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [formData, setFormData] = useState<CustomerFormData>({
     name: "",
     address: "",
@@ -58,10 +72,16 @@ const Customers = () => {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setConfirmDialogOpen(true);
+  };
+  
+  const confirmSave = () => {
     // In a real app, we would save the customer to the database
     console.log("Customer data to save:", formData);
     
-    // Reset form and close dialog
+    toast.success("Customer added successfully!");
+    
+    // Reset form and close dialogs
     setFormData({
       name: "",
       address: "",
@@ -70,7 +90,39 @@ const Customers = () => {
       openingBalance: 0,
       balanceType: "CR",
     });
+    setConfirmDialogOpen(false);
     setDialogOpen(false);
+  };
+  
+  const handleEdit = (customerId: string) => {
+    // Find the customer to edit
+    const customer = mockCustomers.find(c => c.id === customerId);
+    if (customer) {
+      setFormData({
+        name: customer.name,
+        address: customer.address,
+        phone: customer.phone,
+        pan: customer.pan,
+        openingBalance: Math.abs(customer.balance),
+        balanceType: customer.type,
+      });
+      setDialogOpen(true);
+    }
+  };
+  
+  const handleDeleteClick = (customerId: string) => {
+    setSelectedCustomer(customerId);
+    setDeleteDialogOpen(true);
+  };
+  
+  const confirmDelete = () => {
+    // In a real app, we would delete the customer from the database
+    console.log("Deleting customer:", selectedCustomer);
+    
+    toast.success("Customer deleted successfully!");
+    
+    setDeleteDialogOpen(false);
+    setSelectedCustomer(null);
   };
   
   const getTotalBalance = () => {
@@ -98,12 +150,10 @@ const Customers = () => {
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-vyc-primary hover:bg-vyc-primary-dark">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Customer
-              </Button>
-            </DialogTrigger>
+            <Button className="bg-vyc-primary hover:bg-vyc-primary-dark" onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Customer
+            </Button>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Add New Customer</DialogTitle>
@@ -195,6 +245,42 @@ const Customers = () => {
               </form>
             </DialogContent>
           </Dialog>
+          
+          {/* Confirm Save Dialog */}
+          <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Save</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to save this customer information?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmSave} className="bg-vyc-primary hover:bg-vyc-primary-dark">
+                  Yes, Save
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
+          {/* Confirm Delete Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this customer? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                  Yes, Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
         
         <div className="flex items-center py-4">
@@ -231,7 +317,7 @@ const Customers = () => {
                 </TableRow>
               ) : (
                 filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id}>
+                  <TableRow key={customer.id} className="cursor-pointer hover:bg-gray-50" onDoubleClick={() => handleEdit(customer.id)}>
                     <TableCell>{customer.id}</TableCell>
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>{customer.address}</TableCell>
@@ -244,10 +330,10 @@ const Customers = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(customer.id)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-vyc-error">
+                        <Button variant="ghost" size="icon" className="text-vyc-error" onClick={() => handleDeleteClick(customer.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

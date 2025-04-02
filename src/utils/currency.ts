@@ -3,13 +3,11 @@
 export function formatCurrency(amount: number): string {
   // Format with commas for thousands and 2 decimal places
   const formattedAmount = new Intl.NumberFormat('ne-NP', { 
-    style: 'currency',
-    currency: 'NPR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount);
   
-  return formattedAmount;
+  return `रू ${formattedAmount}`; // Use Nepali Rupee symbol
 }
 
 // Converts numbers to words in Nepali currency format
