@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast-utils";
-import { Eye, EyeOff, Lock, User, KeyRound } from "lucide-react";
+import { Eye, EyeOff, Lock, User, KeyRound, Calendar, Clock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatNepaliDate, formatNepaliDateNP } from "@/utils/nepali-date";
 
 // Mock admin users
 const ADMIN_USERS = [
@@ -36,6 +37,7 @@ const LoginForm = () => {
   const [loginAttempt, setLoginAttempt] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [isValidationKeyGenerated, setIsValidationKeyGenerated] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Generate random validation key without 0
   const generateValidationKey = () => {
@@ -56,6 +58,15 @@ const LoginForm = () => {
       .map(digit => String.fromCharCode(96 + parseInt(digit)))
       .join("");
   };
+  
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +141,24 @@ const LoginForm = () => {
     // Fallback if window.close() doesn't work (some browsers block it)
     window.location.href = "about:blank";
   };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+  
+  const formatEnglishDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
@@ -144,7 +173,23 @@ const LoginForm = () => {
           <CardDescription>
             Enter your credentials to access your account
           </CardDescription>
+          
+          {/* Date and Time Display */}
+          <div className="mt-2 text-sm border rounded-lg p-2 bg-gray-50">
+            <div className="flex items-center justify-center gap-2 font-bold">
+              <Clock className="h-4 w-4" /> 
+              {formatTime(currentTime)}
+            </div>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <Calendar className="h-4 w-4" />
+              <span>{formatEnglishDate(currentTime)}</span>
+            </div>
+            <div className="mt-1 font-medium">
+              {formatNepaliDateNP(currentTime)}
+            </div>
+          </div>
         </CardHeader>
+        
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
@@ -192,7 +237,12 @@ const LoginForm = () => {
             
             {isValidationKeyGenerated && (
               <div className="space-y-2">
-                <Label htmlFor="verificationKey">Verification Key</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="verificationKey">Verification Key</Label>
+                  <span className="text-xs bg-vyc-accent text-black px-2 py-1 rounded font-mono">
+                    Key: {validationKey}
+                  </span>
+                </div>
                 <div className="relative">
                   <div className="absolute left-3 top-3 text-gray-400">
                     <KeyRound size={18} />
@@ -261,20 +311,7 @@ const LoginForm = () => {
         </CardFooter>
       </Card>
       
-      {/* Randomly generated key dialog for debugging - will be removed in production */}
-      {isValidationKeyGenerated && (
-        <Dialog open={false}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Debug Info (Remove in Production)</DialogTitle>
-            </DialogHeader>
-            <div>
-              <p>Generated Key: {validationKey}</p>
-              <p>Expected Input: {convertToLetters(validationKey)}</p>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* We've removed the debug dialog that was here previously */}
     </div>
   );
 };
