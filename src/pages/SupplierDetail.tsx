@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -27,99 +27,93 @@ import { formatNepaliDate } from "@/utils/nepali-date";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InvoiceView from "@/components/transactions/InvoiceView";
 
-// Mock data for customer details
-const mockCustomersData = {
-  "CN001": { 
-    id: "CN001", 
-    name: "John Doe", 
+// Mock data for supplier details
+const mockSuppliersData = {
+  "SP001": { 
+    id: "SP001", 
+    name: "Tech Solutions Ltd", 
     address: "Kathmandu, Nepal", 
-    phone: "9801234567", 
-    pan: "123456789", 
-    balance: 15000, 
-    type: "CR" 
-  },
-  "CN002": { 
-    id: "CN002", 
-    name: "Sarah Smith", 
-    address: "Pokhara, Nepal", 
-    phone: "9807654321", 
-    pan: "987654321", 
-    balance: -5000, 
+    phone: "9801234111", 
+    pan: "987650001", 
+    balance: 35000, 
     type: "DR" 
   },
-  "CN003": { 
-    id: "CN003", 
-    name: "Rajesh Kumar", 
+  "SP002": { 
+    id: "SP002", 
+    name: "Office Supplies Co", 
     address: "Lalitpur, Nepal", 
-    phone: "9812345678", 
-    pan: "234567891", 
-    balance: 25000, 
+    phone: "9807654222", 
+    pan: "987650002", 
+    balance: -8000, 
     type: "CR" 
   },
-  "CN004": { 
-    id: "CN004", 
-    name: "Anita Sharma", 
+  "SP003": { 
+    id: "SP003", 
+    name: "Nepal Electronics", 
     address: "Bhaktapur, Nepal", 
-    phone: "9854321098", 
-    pan: "345678912", 
+    phone: "9812345333", 
+    pan: "987650003", 
+    balance: 12000, 
+    type: "DR" 
+  },
+  "SP004": { 
+    id: "SP004", 
+    name: "Green Grocers", 
+    address: "Patan, Nepal", 
+    phone: "9854321444", 
+    pan: "987650004", 
     balance: 0, 
     type: "CR" 
   },
-  "CN005": { 
-    id: "CN005", 
-    name: "Bikash Thapa", 
-    address: "Chitwan, Nepal", 
-    phone: "9867890123", 
-    pan: "456789123", 
-    balance: -12000, 
+  "SP005": { 
+    id: "SP005", 
+    name: "Modern Furniture", 
+    address: "Pokhara, Nepal", 
+    phone: "9867890555", 
+    pan: "987650005", 
+    balance: 18000, 
     type: "DR" 
   },
 };
 
 // Mock transaction data
 const mockTransactions = {
-  "CN001": [
-    { id: "T001", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 5000, balance: 5000 },
-    { id: "T002", date: "2081-01-20", nepaliDate: "२०८१-०१-२०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 3000 },
-    { id: "T003", date: "2081-02-05", nepaliDate: "२०८१-०२-०५", type: "Purchase", description: "Additional Items", amount: 8000, balance: 11000 },
-    { id: "T004", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Monthly Payment", amount: -3000, balance: 8000 },
-    { id: "T005", date: "2081-03-10", nepaliDate: "२०८१-०३-१०", type: "Purchase", description: "Seasonal Products", amount: 7000, balance: 15000 }
+  "SP001": [
+    { id: "ST001", date: "2081-01-10", nepaliDate: "२०८१-०१-१०", type: "Purchase", description: "Computer Equipment", amount: 25000, balance: 25000 },
+    { id: "ST002", date: "2081-01-25", nepaliDate: "२०८१-०१-२५", type: "Payment", description: "Partial Payment", amount: -10000, balance: 15000 },
+    { id: "ST003", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Purchase", description: "Networking Equipment", amount: 20000, balance: 35000 }
   ],
-  "CN002": [
-    { id: "T006", date: "2081-01-10", nepaliDate: "२०८१-०१-१०", type: "Purchase", description: "Initial Purchase", amount: 3000, balance: 3000 },
-    { id: "T007", date: "2081-01-30", nepaliDate: "२०८१-०१-३०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 1000 },
-    { id: "T008", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Purchase", description: "Bulk Order", amount: 7000, balance: 8000 },
-    { id: "T009", date: "2081-02-25", nepaliDate: "२०८१-०२-२५", type: "Payment", description: "Installment", amount: -13000, balance: -5000 }
+  "SP002": [
+    { id: "ST004", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Office Supplies", amount: 12000, balance: 12000 },
+    { id: "ST005", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Payment", description: "Full Payment", amount: -12000, balance: 0 },
+    { id: "ST006", date: "2081-03-05", nepaliDate: "२०८१-०३-०५", type: "Purchase", description: "Stationery", amount: 8000, balance: 8000 },
+    { id: "ST007", date: "2081-03-20", nepaliDate: "२०८१-०३-२०", type: "Payment", description: "Excess Payment", amount: -16000, balance: -8000 }
   ],
-  "CN003": [
-    { id: "T010", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Initial Purchase", amount: 15000, balance: 15000 },
-    { id: "T011", date: "2081-01-25", nepaliDate: "२०८१-०१-२५", type: "Payment", description: "Down Payment", amount: -5000, balance: 10000 },
-    { id: "T012", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Purchase", description: "Supplementary Items", amount: 10000, balance: 20000 },
-    { id: "T013", date: "2081-03-05", nepaliDate: "२०८१-०३-०५", type: "Payment", description: "Partial Payment", amount: -5000, balance: 15000 },
-    { id: "T014", date: "2081-03-20", nepaliDate: "२०८१-०३-२०", type: "Purchase", description: "New Inventory", amount: 10000, balance: 25000 }
+  "SP003": [
+    { id: "ST008", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Electronics", amount: 18000, balance: 18000 },
+    { id: "ST009", date: "2081-02-20", nepaliDate: "२०८१-०२-२०", type: "Payment", description: "Partial Payment", amount: -6000, balance: 12000 }
   ],
-  "CN004": [
-    { id: "T015", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 8000, balance: 8000 },
-    { id: "T016", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Payment", description: "Full Payment", amount: -8000, balance: 0 }
+  "SP004": [
+    { id: "ST010", date: "2081-01-10", nepaliDate: "२०८१-०१-१०", type: "Purchase", description: "Groceries", amount: 15000, balance: 15000 },
+    { id: "ST011", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Full Payment", amount: -15000, balance: 0 }
   ],
-  "CN005": [
-    { id: "T017", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Initial Purchase", amount: 10000, balance: 10000 },
-    { id: "T018", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Partial Payment", amount: -4000, balance: 6000 },
-    { id: "T019", date: "2081-03-01", nepaliDate: "२०८१-०३-०१", type: "Purchase", description: "Additional Products", amount: 6000, balance: 12000 }
+  "SP005": [
+    { id: "ST012", date: "2081-01-20", nepaliDate: "२०८१-०१-२०", type: "Purchase", description: "Office Furniture", amount: 30000, balance: 30000 },
+    { id: "ST013", date: "2081-02-25", nepaliDate: "२०८१-०२-२५", type: "Payment", description: "Partial Payment", amount: -12000, balance: 18000 }
   ]
 };
 
-const CustomerDetail = () => {
-  const { customerId } = useParams<{ customerId: string }>();
+const SupplierDetail = () => {
+  const { supplierId } = useParams<{ supplierId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all");
   const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   
-  // Get customer details from mock data
-  const customer = customerId ? mockCustomersData[customerId] : null;
-  const transactions = customerId ? (mockTransactions[customerId] || []) : [];
+  // Get supplier details from mock data
+  const supplier = supplierId ? mockSuppliersData[supplierId] : null;
+  const transactions = supplierId ? (mockTransactions[supplierId] || []) : [];
   
   // Filter transactions based on active tab
   const filteredTransactions = transactions.filter(transaction => {
@@ -127,9 +121,9 @@ const CustomerDetail = () => {
     return transaction.type.toLowerCase() === activeTab.toLowerCase();
   });
   
-  // Return to customers list
+  // Return to suppliers list
   const handleBack = () => {
-    navigate("/customers");
+    navigate("/suppliers");
   };
 
   // Handle transaction click to show invoice
@@ -138,13 +132,13 @@ const CustomerDetail = () => {
     setInvoiceDialogOpen(true);
   };
   
-  if (!customer) {
+  if (!supplier) {
     return (
       <MainLayout>
         <div className="p-8 text-center">
-          <h2 className="text-xl">Customer not found</h2>
+          <h2 className="text-xl">Supplier not found</h2>
           <Button onClick={handleBack} className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customers
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Suppliers
           </Button>
         </div>
       </MainLayout>
@@ -173,29 +167,29 @@ const CustomerDetail = () => {
           </div>
         </div>
         
-        {/* Customer Summary Card */}
+        {/* Supplier Summary Card */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle>Customer Details</CardTitle>
+            <CardTitle>Supplier Details</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <h3 className="font-bold text-lg">{customer.name}</h3>
-                <p className="text-muted-foreground">{customer.address}</p>
-                <p className="text-muted-foreground">Phone: {customer.phone}</p>
-                {customer.pan && <p className="text-muted-foreground">PAN: {customer.pan}</p>}
+                <h3 className="font-bold text-lg">{supplier.name}</h3>
+                <p className="text-muted-foreground">{supplier.address}</p>
+                <p className="text-muted-foreground">Phone: {supplier.phone}</p>
+                {supplier.pan && <p className="text-muted-foreground">PAN: {supplier.pan}</p>}
               </div>
               
               <div className="md:text-center">
-                <p className="text-sm text-muted-foreground">Customer ID</p>
-                <p className="font-mono font-bold">{customer.id}</p>
+                <p className="text-sm text-muted-foreground">Supplier ID</p>
+                <p className="font-mono font-bold">{supplier.id}</p>
               </div>
               
               <div className="md:text-right">
                 <p className="text-sm text-muted-foreground">Current Balance</p>
-                <p className={`font-bold text-xl ${customer.type === "DR" ? "text-vyc-error" : "text-vyc-success"}`}>
-                  रू {formatCurrency(Math.abs(customer.balance))} {customer.type}
+                <p className={`font-bold text-xl ${supplier.type === "CR" ? "text-vyc-success" : "text-vyc-error"}`}>
+                  रू {formatCurrency(Math.abs(supplier.balance))} {supplier.type}
                 </p>
               </div>
             </div>
@@ -266,7 +260,7 @@ const CustomerDetail = () => {
             {selectedTransaction && (
               <InvoiceView 
                 transaction={selectedTransaction} 
-                customer={customer} 
+                customer={supplier} 
               />
             )}
           </DialogContent>
@@ -324,7 +318,7 @@ const TransactionTable = ({ transactions, onTransactionClick }) => {
                 </span>
               </TableCell>
               <TableCell className="text-right">
-                <span className={transaction.balance < 0 ? 'text-vyc-error' : 'text-vyc-success'}>
+                <span className={transaction.balance < 0 ? 'text-vyc-success' : 'text-vyc-error'}>
                   रू {formatCurrency(Math.abs(transaction.balance))}
                 </span>
               </TableCell>
@@ -336,4 +330,4 @@ const TransactionTable = ({ transactions, onTransactionClick }) => {
   );
 };
 
-export default CustomerDetail;
+export default SupplierDetail;
