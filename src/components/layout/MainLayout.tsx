@@ -1,8 +1,7 @@
-
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import TopBar from "./TopBar";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/toast-utils";
 
 interface MainLayoutProps {
   children: React.ReactNode;
