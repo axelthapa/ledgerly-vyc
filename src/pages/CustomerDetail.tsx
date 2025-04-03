@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,9 @@ import { formatCurrency } from "@/utils/currency";
 import { formatNepaliDate } from "@/utils/nepali-date";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InvoiceView from "@/components/transactions/InvoiceView";
+import TransactionActionButtons from "@/components/transactions/TransactionActionButtons";
+import TransactionForm from "@/components/transactions/TransactionForm";
+import { toast } from "@/components/ui/toast-utils";
 
 // Mock data for customer details
 const mockCustomersData = {
@@ -116,26 +118,44 @@ const CustomerDetail = () => {
   const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [transactionFormOpen, setTransactionFormOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<"sale" | "purchase" | "payment">("sale");
   
-  // Get customer details from mock data
   const customer = customerId ? mockCustomersData[customerId] : null;
   const transactions = customerId ? (mockTransactions[customerId] || []) : [];
   
-  // Filter transactions based on active tab
   const filteredTransactions = transactions.filter(transaction => {
     if (activeTab === "all") return true;
     return transaction.type.toLowerCase() === activeTab.toLowerCase();
   });
   
-  // Return to customers list
   const handleBack = () => {
     navigate("/customers");
   };
 
-  // Handle transaction click to show invoice
   const handleTransactionClick = (transaction) => {
     setSelectedTransaction(transaction);
     setInvoiceDialogOpen(true);
+  };
+  
+  const handleNewSale = () => {
+    setTransactionType("sale");
+    setTransactionFormOpen(true);
+  };
+  
+  const handleNewPayment = () => {
+    setTransactionType("payment");
+    setTransactionFormOpen(true);
+  };
+  
+  const handlePrint = () => {
+    window.print();
+    toast.success("Printing initiated.");
+  };
+  
+  const handleDownload = () => {
+    toast.success("Download initiated.");
+    console.log("Download transaction", selectedTransaction);
   };
   
   if (!customer) {
@@ -164,16 +184,15 @@ const CustomerDetail = () => {
           </Button>
           
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" /> Print
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleDownload}>
               <FileDown className="mr-2 h-4 w-4" /> Export
             </Button>
           </div>
         </div>
         
-        {/* Customer Summary Card */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle>Customer Details</CardTitle>
@@ -202,7 +221,15 @@ const CustomerDetail = () => {
           </CardContent>
         </Card>
         
-        {/* Transactions Section */}
+        <div className="flex justify-end">
+          <TransactionActionButtons 
+            entityType="customer"
+            entityId={customer.id}
+            onNewSale={handleNewSale}
+            onNewPayment={handleNewPayment}
+          />
+        </div>
+        
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">Transaction History</h2>
@@ -254,7 +281,6 @@ const CustomerDetail = () => {
           </Tabs>
         </div>
 
-        {/* Invoice Dialog */}
         <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
           <DialogContent className="sm:max-w-[800px]">
             <DialogHeader className="flex items-center justify-between">
@@ -266,11 +292,22 @@ const CustomerDetail = () => {
             {selectedTransaction && (
               <InvoiceView 
                 transaction={selectedTransaction} 
-                customer={customer} 
+                customer={customer}
+                onPrint={handlePrint}
+                onDownload={handleDownload}
               />
             )}
           </DialogContent>
         </Dialog>
+        
+        {customer && (
+          <TransactionForm
+            open={transactionFormOpen}
+            onOpenChange={setTransactionFormOpen}
+            type={transactionType}
+            entity={customer}
+          />
+        )}
       </div>
     </MainLayout>
   );

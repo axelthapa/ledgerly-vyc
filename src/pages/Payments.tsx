@@ -1,0 +1,41 @@
+
+import React from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+
+const Payments = () => {
+  const navigate = useNavigate();
+  
+  return (
+    <MainLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+            <p className="text-muted-foreground">Manage your payment transactions.</p>
+          </div>
+          
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
+        
+        <div className="p-6 border rounded-md bg-muted/30 text-center">
+          <p className="text-lg">This page is under construction.</p>
+          <p className="text-muted-foreground mt-2">
+            Payment functionality is available through the Customer/Supplier details page or Transactions page.
+          </p>
+          <div className="mt-4 flex gap-4 justify-center">
+            <Button onClick={() => navigate("/customers")}>Go to Customers</Button>
+            <Button onClick={() => navigate("/suppliers")}>Go to Suppliers</Button>
+            <Button onClick={() => navigate("/transactions")}>Go to Transactions</Button>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+  );
+};
+
+export default Payments;

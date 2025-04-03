@@ -31,15 +31,23 @@ interface InvoiceProps {
     phone: string;
     pan?: string;
   };
+  onPrint?: () => void;
+  onDownload?: () => void;
 }
 
-const InvoiceView: React.FC<InvoiceProps> = ({ transaction, customer }) => {
+const InvoiceView: React.FC<InvoiceProps> = ({ 
+  transaction, 
+  customer, 
+  onPrint = () => console.log("Print functionality not implemented"),
+  onDownload = () => console.log("Download functionality not implemented")
+}) => {
   const isPurchase = transaction.type === "Purchase";
   const isPayment = transaction.type === "Payment";
+  const isSale = transaction.type === "Sale";
   
   // Generate mock items for purchase invoice
   const generateMockItems = () => {
-    if (!isPurchase) return [];
+    if (!isPurchase && !isSale) return [];
     
     // For demo purposes, generate some random items based on the transaction amount
     const totalAmount = Math.abs(transaction.amount);
@@ -73,10 +81,10 @@ const InvoiceView: React.FC<InvoiceProps> = ({ transaction, customer }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-end space-x-2">
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={onPrint}>
           <Printer className="mr-2 h-4 w-4" /> Print
         </Button>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={onDownload}>
           <Download className="mr-2 h-4 w-4" /> Download
         </Button>
       </div>
@@ -84,13 +92,15 @@ const InvoiceView: React.FC<InvoiceProps> = ({ transaction, customer }) => {
       <Card>
         <CardContent className="p-6">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold">{isPurchase ? "Purchase Invoice" : "Payment Receipt"}</h2>
+            <h2 className="text-2xl font-bold">
+              {isPurchase ? "Purchase Invoice" : isSale ? "Sales Invoice" : "Payment Receipt"}
+            </h2>
             <p className="text-muted-foreground">Transaction ID: {transaction.id}</p>
           </div>
           
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <h3 className="font-semibold">Customer Details</h3>
+              <h3 className="font-semibold">{isPurchase ? "Supplier" : "Customer"} Details</h3>
               <p>{customer.name}</p>
               <p className="text-muted-foreground">{customer.address}</p>
               <p className="text-muted-foreground">Phone: {customer.phone}</p>
@@ -100,13 +110,13 @@ const InvoiceView: React.FC<InvoiceProps> = ({ transaction, customer }) => {
               <h3 className="font-semibold">Invoice Details</h3>
               <p>Date: {formattedDate}</p>
               <p>Invoice #: {transaction.id}</p>
-              <p>Customer ID: {customer.id}</p>
+              <p>{isPurchase ? "Supplier" : "Customer"} ID: {customer.id}</p>
             </div>
           </div>
           
           <Separator className="my-4" />
           
-          {isPurchase ? (
+          {(isPurchase || isSale) ? (
             <div className="mb-6">
               <Table>
                 <TableHeader>

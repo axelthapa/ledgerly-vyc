@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -26,6 +25,9 @@ import { formatCurrency } from "@/utils/currency";
 import { formatNepaliDate } from "@/utils/nepali-date";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InvoiceView from "@/components/transactions/InvoiceView";
+import TransactionActionButtons from "@/components/transactions/TransactionActionButtons";
+import TransactionForm from "@/components/transactions/TransactionForm";
+import { toast } from "@/components/ui/toast-utils";
 
 // Mock data for supplier details
 const mockSuppliersData = {
@@ -110,26 +112,44 @@ const SupplierDetail = () => {
   const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [transactionFormOpen, setTransactionFormOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<"sale" | "purchase" | "payment">("purchase");
   
-  // Get supplier details from mock data
   const supplier = supplierId ? mockSuppliersData[supplierId] : null;
   const transactions = supplierId ? (mockTransactions[supplierId] || []) : [];
   
-  // Filter transactions based on active tab
   const filteredTransactions = transactions.filter(transaction => {
     if (activeTab === "all") return true;
     return transaction.type.toLowerCase() === activeTab.toLowerCase();
   });
   
-  // Return to suppliers list
   const handleBack = () => {
     navigate("/suppliers");
   };
 
-  // Handle transaction click to show invoice
   const handleTransactionClick = (transaction) => {
     setSelectedTransaction(transaction);
     setInvoiceDialogOpen(true);
+  };
+  
+  const handleNewPurchase = () => {
+    setTransactionType("purchase");
+    setTransactionFormOpen(true);
+  };
+  
+  const handleNewPayment = () => {
+    setTransactionType("payment");
+    setTransactionFormOpen(true);
+  };
+  
+  const handlePrint = () => {
+    window.print();
+    toast.success("Printing initiated.");
+  };
+  
+  const handleDownload = () => {
+    toast.success("Download initiated.");
+    console.log("Download transaction", selectedTransaction);
   };
   
   if (!supplier) {
@@ -158,16 +178,15 @@ const SupplierDetail = () => {
           </Button>
           
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" /> Print
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleDownload}>
               <FileDown className="mr-2 h-4 w-4" /> Export
             </Button>
           </div>
         </div>
         
-        {/* Supplier Summary Card */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle>Supplier Details</CardTitle>
@@ -196,7 +215,15 @@ const SupplierDetail = () => {
           </CardContent>
         </Card>
         
-        {/* Transactions Section */}
+        <div className="flex justify-end">
+          <TransactionActionButtons 
+            entityType="supplier" 
+            entityId={supplier.id}
+            onNewPurchase={handleNewPurchase}
+            onNewPayment={handleNewPayment}
+          />
+        </div>
+        
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">Transaction History</h2>
@@ -248,7 +275,6 @@ const SupplierDetail = () => {
           </Tabs>
         </div>
 
-        {/* Invoice Dialog */}
         <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
           <DialogContent className="sm:max-w-[800px]">
             <DialogHeader className="flex items-center justify-between">
@@ -260,11 +286,22 @@ const SupplierDetail = () => {
             {selectedTransaction && (
               <InvoiceView 
                 transaction={selectedTransaction} 
-                customer={supplier} 
+                customer={supplier}
+                onPrint={handlePrint}
+                onDownload={handleDownload}
               />
             )}
           </DialogContent>
         </Dialog>
+        
+        {supplier && (
+          <TransactionForm
+            open={transactionFormOpen}
+            onOpenChange={setTransactionFormOpen}
+            type={transactionType}
+            entity={supplier}
+          />
+        )}
       </div>
     </MainLayout>
   );
