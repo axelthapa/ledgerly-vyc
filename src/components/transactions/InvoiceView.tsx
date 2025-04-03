@@ -1,7 +1,7 @@
 
-import React from "react";
+import React, { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/utils/currency";
+import { formatCurrency, convertToWords } from "@/utils/currency";
 import { Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 
+interface LineItem {
+  id: string;
+  name: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
 interface InvoiceProps {
   transaction: {
     id: string;
@@ -23,6 +31,7 @@ interface InvoiceProps {
     description: string;
     amount: number;
     balance: number;
+    items?: LineItem[];
   };
   customer: {
     id: string;
@@ -37,16 +46,22 @@ interface InvoiceProps {
 
 const InvoiceView: React.FC<InvoiceProps> = ({ 
   transaction, 
-  customer, 
-  onPrint = () => console.log("Print functionality not implemented"),
-  onDownload = () => console.log("Download functionality not implemented")
+  customer,
+  onPrint,
+  onDownload
 }) => {
+  const invoiceRef = useRef<HTMLDivElement>(null);
   const isPurchase = transaction.type === "Purchase";
   const isPayment = transaction.type === "Payment";
   const isSale = transaction.type === "Sale";
   
-  // Generate mock items for purchase invoice
-  const generateMockItems = () => {
+  // Generate mock items if not provided
+  const items = transaction.items || generateMockItems();
+  
+  // Format amount in words
+  const amountInWords = convertToWords(Math.abs(transaction.amount));
+  
+  function generateMockItems() {
     if (!isPurchase && !isSale) return [];
     
     // For demo purposes, generate some random items based on the transaction amount
@@ -73,9 +88,8 @@ const InvoiceView: React.FC<InvoiceProps> = ({
     }
     
     return items;
-  };
+  }
   
-  const items = generateMockItems();
   const formattedDate = transaction.nepaliDate;
   
   // Format currency without the symbol since formatCurrency already adds it
@@ -86,19 +100,59 @@ const InvoiceView: React.FC<InvoiceProps> = ({
     }).format(amount);
   };
   
+  const handlePrint = () => {
+    if (onPrint) {
+      onPrint();
+      return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow && invoiceRef.current) {
+      printWindow.document.write('<html><head><title>Print Invoice</title>');
+      printWindow.document.write('<style>');
+      printWindow.document.write(`
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+      `);
+      printWindow.document.write('</style></head><body>');
+      printWindow.document.write(invoiceRef.current.innerHTML);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
+  };
+  
+  const handleDownload = () => {
+    if (onDownload) {
+      onDownload();
+      return;
+    }
+    
+    // Basic PDF generation - in a real app, you would use a proper PDF library
+    alert('Download functionality would generate a PDF in a real application.');
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-end space-x-2">
-        <Button variant="outline" size="sm" onClick={onPrint}>
+        <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="mr-2 h-4 w-4" /> Print
         </Button>
-        <Button variant="outline" size="sm" onClick={onDownload}>
+        <Button variant="outline" size="sm" onClick={handleDownload}>
           <Download className="mr-2 h-4 w-4" /> Download
         </Button>
       </div>
       
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-6" ref={invoiceRef}>
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold">
               {isPurchase ? "Purchase Invoice" : isSale ? "Sales Invoice" : "Payment Receipt"}
@@ -150,6 +204,10 @@ const InvoiceView: React.FC<InvoiceProps> = ({
                   </TableRow>
                 </TableBody>
               </Table>
+              
+              <div className="mt-4 p-3 border rounded-md bg-muted/10">
+                <p><span className="font-semibold">In Words:</span> {amountInWords}</p>
+              </div>
             </div>
           ) : (
             <div className="mb-6 border rounded-md p-4 bg-muted/30">
@@ -159,6 +217,7 @@ const InvoiceView: React.FC<InvoiceProps> = ({
               </div>
               <p className="mt-2">Payment for: {transaction.description}</p>
               <p className="text-muted-foreground">Payment method: Cash</p>
+              <p className="mt-2"><span className="font-semibold">In Words:</span> {amountInWords}</p>
             </div>
           )}
           

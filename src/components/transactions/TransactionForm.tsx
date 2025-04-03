@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast-utils";
 import InvoiceView from "./InvoiceView";
 import { useNavigate } from "react-router-dom";
+import LineItemEntry, { LineItem } from "./LineItemEntry";
+import { formatCurrency, convertToWords } from "@/utils/currency";
 
 interface TransactionFormProps {
   open: boolean;
@@ -48,20 +50,29 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   entity
 }) => {
   const navigate = useNavigate();
+  const isPayment = type === "payment";
+  const isSale = type === "sale";
+  const isPurchase = type === "purchase";
+  
   const [formData, setFormData] = useState({
-    amount: "",
     description: "",
     date: new Date().toISOString().split("T")[0],
     paymentMethod: "cash"
   });
   
+  const [lineItems, setLineItems] = useState<LineItem[]>([
+    {
+      id: `item-${Date.now()}`,
+      name: "",
+      quantity: 1,
+      rate: 0,
+      amount: 0
+    }
+  ]);
+  
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saveAndPayOpen, setSaveAndPayOpen] = useState(false);
-  
-  const isPayment = type === "payment";
-  const isSale = type === "sale";
-  const isPurchase = type === "purchase";
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -71,8 +82,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     });
   };
   
+  const calculateTotal = () => {
+    return lineItems.reduce((sum, item) => sum + item.amount, 0);
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // For non-payment transactions, ensure we have line items
+    if (!isPayment) {
+      const hasValidItems = lineItems.some(item => item.name && item.quantity > 0 && item.rate > 0);
+      if (!hasValidItems) {
+        toast.error("Please add at least one item with name, quantity, and rate.");
+        return;
+      }
+    }
+    
     setConfirmOpen(true);
   };
   
@@ -80,6 +105,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     console.log("Transaction data:", {
       type,
       entityId: entity.id,
+      items: lineItems,
+      total: calculateTotal(),
       ...formData
     });
     
@@ -106,7 +133,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     
     // Here you'd go to the payment form with the right entity
     const entityType = isSale ? "customer" : "supplier";
-    navigate(`/payments/new?${entityType}Id=${entity.id}`);
+    navigate(`/payments?${entityType}Id=${entity.id}`);
     
     // Show success message
     toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} recorded successfully!`);
@@ -127,14 +154,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     nepaliDate: "२०८१-०४-०१", // This would normally be converted from date
     type: type.charAt(0).toUpperCase() + type.slice(1),
     description: formData.description || `New ${type}`,
-    amount: isSale ? parseFloat(formData.amount || "0") : -parseFloat(formData.amount || "0"),
-    balance: entity.balance + (isSale ? parseFloat(formData.amount || "0") : -parseFloat(formData.amount || "0"))
+    amount: isPayment ? parseFloat("0") : calculateTotal(),
+    balance: entity.balance + (isSale ? calculateTotal() : -calculateTotal()),
+    items: lineItems
   };
   
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className={`${!isPayment ? "sm:max-w-[800px]" : "sm:max-w-[500px]"} max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>
               {isPurchase ? "New Purchase" : isSale ? "New Sale" : "New Payment"}
@@ -142,18 +170,48 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                name="amount"
-                type="number"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="Enter amount"
-                required
-              />
-            </div>
+            {!isPayment && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="lineItems">Items</Label>
+                  <LineItemEntry 
+                    items={lineItems}
+                    setItems={setLineItems}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Amount in Words</Label>
+                    <div className="p-3 border rounded-md bg-muted/20 text-sm">
+                      {convertToWords(calculateTotal())}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Total Amount</Label>
+                    <div className="p-3 border rounded-md bg-muted/20 text-xl font-bold text-right">
+                      {formatCurrency(calculateTotal())}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {isPayment && (
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount</Label>
+                <Input
+                  id="amount"
+                  name="amount"
+                  type="number"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  placeholder="Enter amount"
+                  required
+                />
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
@@ -242,7 +300,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Transaction Preview</DialogTitle>
           </DialogHeader>
