@@ -1,17 +1,41 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { FileDown, Upload, HardDrive, RefreshCw, Check, X, AlertCircle, Clock } from "lucide-react";
+import { FileDown, Upload, HardDrive, RefreshCw, Check, X, AlertCircle, Clock, Download } from "lucide-react";
 import { toast } from "@/components/ui/toast-utils";
 import { formatNepaliDate } from "@/utils/nepali-date";
+import { 
+  Dialog,
+  DialogContent, 
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 
 const Backup = () => {
   const [backupProgress, setBackupProgress] = useState(0);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreProgress, setRestoreProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const mockBackups = [
     { id: 1, name: "Full Backup", date: new Date("2024-07-25"), size: "15.2 MB", status: "completed" },
@@ -40,21 +64,95 @@ const Backup = () => {
   
   const handleRestore = (backupId: number) => {
     setIsRestoring(true);
+    setRestoreProgress(0);
     
-    // Simulate restore operation
-    setTimeout(() => {
-      setIsRestoring(false);
-      toast.success("Backup restored successfully!");
-    }, 2000);
+    const interval = setInterval(() => {
+      setRestoreProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsRestoring(false);
+          toast.success("Backup restored successfully!");
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
   };
   
   const handleDownload = (backupId: number) => {
+    // Create a mock backup data - in a real app, this would be fetched from the server
+    const mockBackupData = JSON.stringify({
+      version: "1.0",
+      timestamp: new Date().toISOString(),
+      data: {
+        customers: [],
+        suppliers: [],
+        transactions: [],
+        settings: {}
+      }
+    }, null, 2);
+    
+    // Create a blob from the data
+    const blob = new Blob([mockBackupData], { type: 'application/json' });
+    
+    // Create a URL for the blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary anchor element
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-${backupId}-${new Date().toISOString().split('T')[0]}.json`;
+    
+    // Append the anchor to the document, click it, and remove it
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // Clean up the URL object
+    URL.revokeObjectURL(url);
+    
     toast.success("Backup file is being downloaded.");
   };
   
   const handleUploadBackup = () => {
-    // In a real app, this would trigger a file upload dialog
-    toast.success("Backup file uploaded successfully!");
+    setUploadDialogOpen(true);
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0]);
+    }
+  };
+  
+  const handleUploadSubmit = () => {
+    if (!selectedFile) {
+      toast.error("Please select a backup file first.");
+      return;
+    }
+    
+    setUploadDialogOpen(false);
+    setRestoreConfirmOpen(true);
+  };
+  
+  const confirmRestore = () => {
+    setRestoreConfirmOpen(false);
+    
+    // Simulate file reading and restore process
+    setIsRestoring(true);
+    setRestoreProgress(0);
+    
+    const interval = setInterval(() => {
+      setRestoreProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsRestoring(false);
+          setSelectedFile(null);
+          toast.success("Backup file successfully restored!");
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 100);
   };
   
   const getStatusIcon = (status: string) => {
@@ -85,6 +183,20 @@ const Backup = () => {
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
         </div>
+        
+        {isRestoring && (
+          <Card className="border-amber-500">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium">Restoring backup...</span>
+                  <span>{restoreProgress}%</span>
+                </div>
+                <Progress value={restoreProgress} className="h-2" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <div className="grid gap-6 md:grid-cols-2">
           {/* Create Backup Card */}
@@ -181,9 +293,10 @@ const Backup = () => {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleDownload(backup.id)}
-                                disabled={isBackingUp || isRestoring}
+                                disabled={isBackingUp || isRestoring || backup.status !== "completed"}
+                                title="Download backup"
                               >
-                                <FileDown className="h-4 w-4" />
+                                <Download className="h-4 w-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -282,6 +395,74 @@ const Backup = () => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Upload Backup Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Backup</DialogTitle>
+            <DialogDescription>
+              Upload a backup file to restore your data. This will replace your current data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-6">
+              <Upload className="h-10 w-10 text-gray-400 mb-2" />
+              <p className="text-sm text-center text-gray-500 mb-2">
+                Click to select a backup file or drag and drop
+              </p>
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="hidden" 
+                accept=".json,.bak"
+                onChange={handleFileChange}
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Select File
+              </Button>
+              {selectedFile && (
+                <p className="mt-2 text-sm text-green-600">
+                  Selected: {selectedFile.name}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-vyc-primary hover:bg-vyc-primary-dark" 
+              onClick={handleUploadSubmit}
+              disabled={!selectedFile}
+            >
+              Upload & Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Restore Dialog */}
+      <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Restore</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to restore from this backup? This will replace all current data and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRestore} className="bg-vyc-primary hover:bg-vyc-primary-dark">
+              Yes, Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 };
