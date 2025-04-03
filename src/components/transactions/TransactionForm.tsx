@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast-utils";
 import InvoiceView from "./InvoiceView";
+import { useNavigate } from "react-router-dom";
 
 interface TransactionFormProps {
   open: boolean;
@@ -37,6 +37,7 @@ interface TransactionFormProps {
     pan?: string;
     balance: number;
     type: string;
+    entityType?: string;
   };
 }
 
@@ -46,6 +47,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   type,
   entity
 }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
@@ -91,6 +93,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       // If it's a payment, just show success and close
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} recorded successfully!`);
       onOpenChange(false);
+      navigate("/transactions");
     }
   };
   
@@ -101,10 +104,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const handleMakePayment = () => {
     setSaveAndPayOpen(false);
     
-    // Here you'd modify the form to handle payment
-    // For this example, we'll just show a success message and close
+    // Here you'd go to the payment form with the right entity
+    const entityType = isSale ? "customer" : "supplier";
+    navigate(`/payments/new?${entityType}Id=${entity.id}`);
+    
+    // Show success message
     toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} recorded successfully!`);
     onOpenChange(false);
+  };
+  
+  const handleNoPayment = () => {
+    setSaveAndPayOpen(false);
+    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} recorded successfully!`);
+    onOpenChange(false);
+    navigate("/transactions");
   };
   
   // Mock transaction data for preview
@@ -114,7 +127,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     nepaliDate: "२०८१-०४-०१", // This would normally be converted from date
     type: type.charAt(0).toUpperCase() + type.slice(1),
     description: formData.description || `New ${type}`,
-    amount: isSale ? parseFloat(formData.amount) : -parseFloat(formData.amount),
+    amount: isSale ? parseFloat(formData.amount || "0") : -parseFloat(formData.amount || "0"),
     balance: entity.balance + (isSale ? parseFloat(formData.amount || "0") : -parseFloat(formData.amount || "0"))
   };
   
@@ -250,11 +263,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setSaveAndPayOpen(false);
-              onOpenChange(false);
-              toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} recorded successfully!`);
-            }}>
+            <AlertDialogCancel onClick={handleNoPayment}>
               No, Later
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleMakePayment} className="bg-vyc-primary hover:bg-vyc-primary-dark">

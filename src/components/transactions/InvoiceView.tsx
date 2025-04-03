@@ -78,6 +78,14 @@ const InvoiceView: React.FC<InvoiceProps> = ({
   const items = generateMockItems();
   const formattedDate = transaction.nepaliDate;
   
+  // Format currency without the symbol since formatCurrency already adds it
+  const formatAmountWithoutSymbol = (amount: number): string => {
+    return new Intl.NumberFormat('ne-NP', { 
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-end space-x-2">
@@ -132,13 +140,13 @@ const InvoiceView: React.FC<InvoiceProps> = ({
                     <TableRow key={item.id}>
                       <TableCell>{item.name}</TableCell>
                       <TableCell className="text-center">{item.quantity}</TableCell>
-                      <TableCell className="text-right">रू {formatCurrency(item.rate)}</TableCell>
-                      <TableCell className="text-right">रू {formatCurrency(item.amount)}</TableCell>
+                      <TableCell className="text-right">रू {formatAmountWithoutSymbol(item.rate)}</TableCell>
+                      <TableCell className="text-right">रू {formatAmountWithoutSymbol(item.amount)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
                     <TableCell colSpan={3} className="text-right font-semibold">Total</TableCell>
-                    <TableCell className="text-right font-bold">रू {formatCurrency(Math.abs(transaction.amount))}</TableCell>
+                    <TableCell className="text-right font-bold">रू {formatAmountWithoutSymbol(Math.abs(transaction.amount))}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -147,7 +155,7 @@ const InvoiceView: React.FC<InvoiceProps> = ({
             <div className="mb-6 border rounded-md p-4 bg-muted/30">
               <div className="flex justify-between">
                 <h3 className="font-semibold">Payment Details</h3>
-                <p className="font-bold text-vyc-success">रू {formatCurrency(Math.abs(transaction.amount))}</p>
+                <p className="font-bold text-vyc-success">रू {formatAmountWithoutSymbol(Math.abs(transaction.amount))}</p>
               </div>
               <p className="mt-2">Payment for: {transaction.description}</p>
               <p className="text-muted-foreground">Payment method: Cash</p>
@@ -163,7 +171,7 @@ const InvoiceView: React.FC<InvoiceProps> = ({
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Balance after transaction</p>
                 <p className={`font-bold ${transaction.balance < 0 ? 'text-vyc-error' : 'text-vyc-success'}`}>
-                  रू {formatCurrency(Math.abs(transaction.balance))} {transaction.balance < 0 ? 'DR' : 'CR'}
+                  रू {formatAmountWithoutSymbol(Math.abs(transaction.balance))} {transaction.balance < 0 ? 'DR' : 'CR'}
                 </p>
               </div>
             </div>

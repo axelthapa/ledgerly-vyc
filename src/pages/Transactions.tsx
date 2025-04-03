@@ -92,11 +92,13 @@ const Transactions = () => {
   
   // Handle print and download
   const handlePrint = () => {
+    // Use browser's print functionality
     window.print();
     toast.success("Printing initiated.");
   };
   
   const handleDownload = () => {
+    // In a real app, this would generate a PDF or CSV
     toast.success("Download initiated.");
   };
   
