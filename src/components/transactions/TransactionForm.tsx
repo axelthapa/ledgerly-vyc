@@ -57,7 +57,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   const [formData, setFormData] = useState({
     description: "",
     date: new Date().toISOString().split("T")[0],
-    paymentMethod: "cash"
+    paymentMethod: "cash",
+    amount: 0 // Added the amount field to fix the error
   });
   
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -147,6 +148,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     navigate("/transactions");
   };
   
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [saveAndPayOpen, setSaveAndPayOpen] = useState(false);
+  
   // Mock transaction data for preview
   const mockTransaction = {
     id: `T${Math.floor(Math.random() * 10000)}`,
@@ -154,7 +159,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     nepaliDate: "२०८१-०४-०१", // This would normally be converted from date
     type: type.charAt(0).toUpperCase() + type.slice(1),
     description: formData.description || `New ${type}`,
-    amount: isPayment ? parseFloat("0") : calculateTotal(),
+    amount: isPayment ? parseFloat(formData.amount.toString()) : calculateTotal(),
     balance: entity.balance + (isSale ? calculateTotal() : -calculateTotal()),
     items: lineItems
   };
