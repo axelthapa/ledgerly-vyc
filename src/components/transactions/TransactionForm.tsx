@@ -58,7 +58,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     description: "",
     date: new Date().toISOString().split("T")[0],
     paymentMethod: "cash",
-    amount: 0 // Added the amount field to fix the error
+    amount: 0
   });
   
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -147,10 +147,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     onOpenChange(false);
     navigate("/transactions");
   };
-  
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [saveAndPayOpen, setSaveAndPayOpen] = useState(false);
   
   // Mock transaction data for preview
   const mockTransaction = {
