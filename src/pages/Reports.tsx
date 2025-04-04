@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -27,18 +28,71 @@ import {
 import { formatCurrency } from "@/utils/currency";
 import { toast } from "@/components/ui/toast-utils";
 import { generateTransactionReport } from "@/utils/print-utils";
+import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("sales");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  const [printVisible, setPrintVisible] = useState(false);
 
   const handleExport = () => {
+    const summaryData = generateSummaryData(activeTab);
+    const reportData = generateReportData(activeTab);
+
+    // Create a mock transaction for export
+    const mockTransaction = {
+      id: `RPT-${Date.now()}`,
+      date: new Date().toLocaleDateString(),
+      nepaliDate: "२०८१-०३-१५",
+      type: activeTab.charAt(0).toUpperCase() + activeTab.slice(1),
+      description: `${summaryData.title} from ${dateRange.from || 'All time'} to ${dateRange.to || 'Present'}`,
+      amount: summaryData.total,
+      balance: summaryData.total,
+      items: reportData.map(item => ({
+        id: item.id,
+        name: item.description,
+        quantity: 1,
+        rate: item.amount,
+        amount: item.amount
+      }))
+    };
+
+    // Create a mock entity
+    const mockEntity = {
+      id: "REPORT",
+      name: "Report Generation",
+      address: "System Generated",
+      phone: "",
+      type: "Report"
+    };
+
+    generateTransactionReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: mockTransaction,
+      entity: mockEntity,
+      dateRange: {
+        from: dateRange.from || "All time",
+        to: dateRange.to || "Present"
+      },
+      transactions: reportData,
+      showTransactions: true,
+      reportTitle: summaryData.title
+    });
+    
     toast.success("Report exported successfully!");
   };
 
   const handlePrint = () => {
-    window.print();
-    toast.success("Printing initiated.");
+    setPrintVisible(true);
+    setTimeout(() => {
+      window.print();
+      setPrintVisible(false);
+      toast.success("Printing initiated.");
+    }, 100);
   };
   
   const generateSummaryData = (tab: string) => {
@@ -134,6 +188,37 @@ const Reports = () => {
 
   const summaryData = generateSummaryData(activeTab);
   const reportData = generateReportData(activeTab);
+
+  // Create data for print template
+  const printData = {
+    companyName: "Your Company",
+    companyAddress: "Kathmandu, Nepal",
+    companyPhone: "01-1234567",
+    companyEmail: "info@yourcompany.com",
+    companyPan: "123456789",
+    transaction: {
+      id: `RPT-${activeTab.toUpperCase()}`,
+      date: new Date().toLocaleDateString(),
+      nepaliDate: "२०८१-०३-१५",
+      type: activeTab.charAt(0).toUpperCase() + activeTab.slice(1),
+      description: `${summaryData.title} from ${dateRange.from || 'All time'} to ${dateRange.to || 'Present'}`,
+      amount: summaryData.total,
+      balance: summaryData.total
+    },
+    entity: {
+      id: "REPORT",
+      name: summaryData.title,
+      address: `Date Range: ${dateRange.from || 'All time'} to ${dateRange.to || 'Present'}`,
+      phone: "",
+      type: "Report"
+    },
+    dateRange: {
+      from: dateRange.from || "All time",
+      to: dateRange.to || "Present"
+    },
+    transactions: reportData,
+    showTransactions: true
+  };
 
   return (
     <MainLayout>
@@ -319,7 +404,45 @@ const Reports = () => {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* Print Template (hidden by default) */}
+        <div className={`print-only ${printVisible ? '' : 'hidden'}`}>
+          <TransactionPrintTemplate
+            companyName={printData.companyName}
+            companyAddress={printData.companyAddress}
+            companyPhone={printData.companyPhone}
+            companyEmail={printData.companyEmail}
+            companyPan={printData.companyPan}
+            transaction={printData.transaction}
+            entity={printData.entity}
+            dateRange={printData.dateRange}
+            transactions={printData.transactions}
+            showTransactions={printData.showTransactions}
+          />
+        </div>
       </div>
+
+      {/* Print-specific styles */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-only, .print-only * {
+            visibility: visible;
+          }
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+        }
+      `}</style>
     </MainLayout>
   );
 };

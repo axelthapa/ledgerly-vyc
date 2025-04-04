@@ -3,14 +3,19 @@ import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Printer, FileDown } from "lucide-react";
 import TransactionForm from "@/components/transactions/TransactionForm";
+import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
+import { generateTransactionReport } from "@/utils/print-utils";
+import { toast } from "@/components/ui/toast-utils";
 
 const Purchases = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [transactionFormOpen, setTransactionFormOpen] = useState(false);
-  const [supplierData, setSupplierData] = useState(null);
+  const [supplierData, setSupplierData] = useState<any>(null);
+  const [currentTransaction, setCurrentTransaction] = useState<any>(null);
+  const [printVisible, setPrintVisible] = useState(false);
   
   // Parse query parameters to check if we have a supplierId
   useEffect(() => {
@@ -43,12 +48,52 @@ const Purchases = () => {
       if (mockSupplierData[supplierId]) {
         setSupplierData(mockSupplierData[supplierId]);
         setTransactionFormOpen(true);
+        
+        // Create a mock transaction for this supplier
+        setCurrentTransaction({
+          id: `PUR-${Date.now()}`,
+          date: new Date().toLocaleDateString(),
+          nepaliDate: "२०८१-०३-१५",
+          type: "Purchase",
+          description: `Purchase from ${mockSupplierData[supplierId].name}`,
+          amount: 0,
+          balance: mockSupplierData[supplierId].balance,
+          items: []
+        });
       }
     }
   }, [location]);
   
   const handleNewPurchase = () => {
     navigate("/suppliers");
+  };
+  
+  const handlePrint = () => {
+    setPrintVisible(true);
+    setTimeout(() => {
+      window.print();
+      setPrintVisible(false);
+      toast.success("Printing initiated.");
+    }, 100);
+  };
+
+  const handleExport = () => {
+    if (!supplierData || !currentTransaction) {
+      toast.error("No transaction data available to export");
+      return;
+    }
+    
+    generateTransactionReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: currentTransaction,
+      entity: supplierData,
+      showTransactions: false,
+      reportTitle: "Purchase Invoice"
+    });
   };
   
   return (
@@ -60,9 +105,21 @@ const Purchases = () => {
             <p className="text-muted-foreground">Manage your purchase transactions.</p>
           </div>
           
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
+          <div className="flex gap-2">
+            {transactionFormOpen && supplierData && (
+              <>
+                <Button variant="outline" onClick={handleExport}>
+                  <FileDown className="mr-2 h-4 w-4" /> Export
+                </Button>
+                <Button variant="outline" onClick={handlePrint}>
+                  <Printer className="mr-2 h-4 w-4" /> Print
+                </Button>
+              </>
+            )}
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+          </div>
         </div>
         
         {!transactionFormOpen ? (
@@ -98,12 +155,51 @@ const Purchases = () => {
                   onOpenChange={setTransactionFormOpen}
                   type="purchase"
                   entity={supplierData}
+                  onTransactionChange={setCurrentTransaction}
                 />
               </div>
             )}
           </div>
         )}
+        
+        {/* Print Template (hidden by default) */}
+        {supplierData && currentTransaction && (
+          <div className={`print-only ${printVisible ? '' : 'hidden'}`}>
+            <TransactionPrintTemplate
+              companyName="Your Company"
+              companyAddress="Kathmandu, Nepal"
+              companyPhone="01-1234567"
+              companyEmail="info@yourcompany.com"
+              companyPan="123456789"
+              transaction={currentTransaction}
+              entity={supplierData}
+              showTransactions={false}
+            />
+          </div>
+        )}
       </div>
+      
+      {/* Print-specific styles */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-only, .print-only * {
+            visibility: visible;
+          }
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+        }
+      `}</style>
     </MainLayout>
   );
 };

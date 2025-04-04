@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -13,9 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Printer, FileDown } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
 import { toast } from "@/components/ui/toast-utils";
+import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
+import { generateTransactionReport } from "@/utils/print-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +53,7 @@ const Suppliers = () => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+  const [printVisible, setPrintVisible] = useState(false);
   const [formData, setFormData] = useState<SupplierFormData>({
     name: "",
     address: "",
@@ -151,6 +153,58 @@ const Suppliers = () => {
     };
   };
   
+  const handlePrint = () => {
+    setPrintVisible(true);
+    setTimeout(() => {
+      window.print();
+      setPrintVisible(false);
+      toast.success("Printing initiated.");
+    }, 100);
+  };
+
+  const handleExport = () => {
+    // Mock transaction data for supplier list report
+    const mockTransaction = {
+      id: `SUP-LIST-${Date.now()}`,
+      date: new Date().toLocaleDateString(),
+      nepaliDate: "२०८१-०३-१५",
+      type: "Report",
+      description: "Suppliers List Report",
+      amount: getTotalBalance().amount,
+      balance: getTotalBalance().amount,
+    };
+
+    // Generate report
+    generateTransactionReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: mockTransaction,
+      entity: {
+        id: "SUPPLIERS",
+        name: "Suppliers List",
+        address: "All Suppliers",
+        phone: "",
+        type: "Report"
+      },
+      transactions: mockSuppliers.map(supplier => ({
+        id: supplier.id,
+        date: new Date().toLocaleDateString(),
+        nepaliDate: "२०८१-०३-१५",
+        type: "Supplier",
+        description: supplier.name,
+        amount: supplier.balance,
+        balance: supplier.balance,
+      })),
+      showTransactions: true,
+      reportTitle: "Suppliers List"
+    });
+
+    toast.success("Report exported successfully!");
+  };
+  
   const totalBalance = getTotalBalance();
   
   return (
@@ -163,102 +217,110 @@ const Suppliers = () => {
               Manage your suppliers and their balances.
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <Button className="bg-vyc-primary hover:bg-vyc-primary-dark" onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Supplier
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}>
+              <FileDown className="mr-2 h-4 w-4" /> Export
             </Button>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Add New Supplier</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label htmlFor="name" className="text-sm font-medium">Supplier Name</label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Enter supplier name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="address" className="text-sm font-medium">Address</label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="Enter address"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="mr-2 h-4 w-4" /> Print
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Button className="bg-vyc-primary hover:bg-vyc-primary-dark" onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Supplier
+              </Button>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Supplier</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <label htmlFor="phone" className="text-sm font-medium">Phone Number</label>
+                    <label htmlFor="name" className="text-sm font-medium">Supplier Name</label>
                     <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
-                      placeholder="Enter phone number"
+                      placeholder="Enter supplier name"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="pan" className="text-sm font-medium">PAN Number</label>
+                    <label htmlFor="address" className="text-sm font-medium">Address</label>
                     <Input
-                      id="pan"
-                      name="pan"
-                      value={formData.pan}
+                      id="address"
+                      name="address"
+                      value={formData.address}
                       onChange={handleInputChange}
-                      placeholder="Enter PAN number"
+                      placeholder="Enter address"
+                      required
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label htmlFor="openingBalance" className="text-sm font-medium">Opening Balance</label>
-                    <Input
-                      id="openingBalance"
-                      name="openingBalance"
-                      type="number"
-                      value={formData.openingBalance}
-                      onChange={handleInputChange}
-                      placeholder="0.00"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="phone" className="text-sm font-medium">Phone Number</label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="Enter phone number"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="pan" className="text-sm font-medium">PAN Number</label>
+                      <Input
+                        id="pan"
+                        name="pan"
+                        value={formData.pan}
+                        onChange={handleInputChange}
+                        placeholder="Enter PAN number"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label htmlFor="balanceType" className="text-sm font-medium">Balance Type</label>
-                    <select
-                      id="balanceType"
-                      name="balanceType"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      value={formData.balanceType}
-                      onChange={handleInputChange}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="openingBalance" className="text-sm font-medium">Opening Balance</label>
+                      <Input
+                        id="openingBalance"
+                        name="openingBalance"
+                        type="number"
+                        value={formData.openingBalance}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="balanceType" className="text-sm font-medium">Balance Type</label>
+                      <select
+                        id="balanceType"
+                        name="balanceType"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={formData.balanceType}
+                        onChange={handleInputChange}
+                      >
+                        <option value="DR">DR (Debit)</option>
+                        <option value="CR">CR (Credit)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDialogOpen(false)}
                     >
-                      <option value="DR">DR (Debit)</option>
-                      <option value="CR">CR (Credit)</option>
-                    </select>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-vyc-primary hover:bg-vyc-primary-dark">
+                      Save Supplier
+                    </Button>
                   </div>
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-vyc-primary hover:bg-vyc-primary-dark">
-                    Save Supplier
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
           
           <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
             <AlertDialogContent>
@@ -376,7 +438,64 @@ const Suppliers = () => {
             </div>
           </div>
         </div>
+
+        <div className={`print-only ${printVisible ? '' : 'hidden'}`}>
+          <TransactionPrintTemplate
+            companyName="Your Company"
+            companyAddress="Kathmandu, Nepal"
+            companyPhone="01-1234567"
+            companyEmail="info@yourcompany.com" 
+            companyPan="123456789"
+            transaction={{
+              id: "SUP-LIST",
+              date: new Date().toLocaleDateString(),
+              nepaliDate: "२०८१-०३-१५",
+              type: "Report",
+              description: "Suppliers List",
+              amount: totalBalance.amount,
+              balance: totalBalance.amount
+            }}
+            entity={{
+              id: "SUPPLIERS",
+              name: "Suppliers List",
+              address: "All Active Suppliers",
+              phone: "",
+              type: "Report"
+            }}
+            transactions={mockSuppliers.map(supplier => ({
+              id: supplier.id,
+              date: new Date().toLocaleDateString(),
+              nepaliDate: "२०८१-०३-१५",
+              type: "Supplier",
+              description: supplier.name,
+              amount: supplier.balance,
+              balance: supplier.balance
+            }))}
+            showTransactions={true}
+          />
+        </div>
       </div>
+      
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-only, .print-only * {
+            visibility: visible;
+          }
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+        }
+      `}</style>
     </MainLayout>
   );
 };
