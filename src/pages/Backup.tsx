@@ -1,59 +1,54 @@
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { FileDown, Upload, HardDrive, RefreshCw, Check, X, AlertCircle, Clock, Download } from "lucide-react";
 import { toast } from "@/components/ui/toast-utils";
-import { formatNepaliDate } from "@/utils/nepali-date";
+import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { 
-  Dialog,
-  DialogContent, 
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
+  Download, 
+  Upload, 
+  Calendar,
+  FileText, 
+  HardDrive,
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+  RefreshCw,
+  Lock
+} from "lucide-react";
 
 const Backup = () => {
   const [backupProgress, setBackupProgress] = useState(0);
+  const [restoreProgress, setRestoreProgress] = useState(0);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [restoreProgress, setRestoreProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const mockBackups = [
-    { id: 1, name: "Full Backup", date: new Date("2024-07-25"), size: "15.2 MB", status: "completed" },
-    { id: 2, name: "Auto Backup", date: new Date("2024-07-18"), size: "14.8 MB", status: "completed" },
-    { id: 3, name: "Scheduled Backup", date: new Date("2024-07-11"), size: "13.5 MB", status: "completed" },
-    { id: 4, name: "Manual Backup", date: new Date("2024-07-04"), size: "12.9 MB", status: "failed" },
-    { id: 5, name: "Initial Backup", date: new Date("2024-06-28"), size: "10.2 MB", status: "completed" },
-  ];
+  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
+  const [backupHistory] = useState([
+    { date: "2081-03-15", size: "2.3 MB", type: "Manual", status: "Complete" },
+    { date: "2081-03-01", size: "2.2 MB", type: "Automatic", status: "Complete" },
+    { date: "2081-02-15", size: "2.1 MB", type: "Manual", status: "Complete" },
+    { date: "2081-02-01", size: "2.0 MB", type: "Automatic", status: "Complete" },
+    { date: "2081-01-15", size: "1.9 MB", type: "Manual", status: "Complete" }
+  ]);
+
+  const fiscalYear = getCurrentFiscalYear();
   
   const handleBackup = () => {
     setIsBackingUp(true);
     setBackupProgress(0);
     
+    // Simulate backup process
     const interval = setInterval(() => {
       setBackupProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsBackingUp(false);
+          generateBackupFile();
           toast.success("Backup completed successfully!");
           return 100;
         }
@@ -62,110 +57,75 @@ const Backup = () => {
     }, 300);
   };
   
-  const handleRestore = (backupId: number) => {
-    setIsRestoring(true);
-    setRestoreProgress(0);
-    
-    const interval = setInterval(() => {
-      setRestoreProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsRestoring(false);
-          toast.success("Backup restored successfully!");
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-  };
-  
-  const handleDownload = (backupId: number) => {
-    // Create a mock backup data - in a real app, this would be fetched from the server
-    const mockBackupData = JSON.stringify({
-      version: "1.0",
-      timestamp: new Date().toISOString(),
+  const generateBackupFile = () => {
+    // Create mock data for the backup
+    const mockData = {
+      version: "1.0.0",
+      date: new Date().toISOString(),
+      fiscalYear: fiscalYear.year,
       data: {
-        customers: [],
-        suppliers: [],
-        transactions: [],
-        settings: {}
+        customers: Array(50).fill(0).map((_, i) => ({
+          id: `CN00${i+1}`,
+          name: `Customer ${i+1}`,
+          address: "Sample Address",
+          phone: `98${Math.floor(10000000 + Math.random() * 90000000)}`,
+          balance: Math.floor(Math.random() * 50000)
+        })),
+        suppliers: Array(20).fill(0).map((_, i) => ({
+          id: `SP00${i+1}`,
+          name: `Supplier ${i+1}`,
+          address: "Sample Address",
+          phone: `98${Math.floor(10000000 + Math.random() * 90000000)}`,
+          balance: Math.floor(Math.random() * 50000)
+        })),
+        transactions: Array(100).fill(0).map((_, i) => ({
+          id: `T00${i+1}`,
+          date: new Date().toISOString(),
+          type: ["Sale", "Purchase", "Payment"][Math.floor(Math.random() * 3)],
+          amount: Math.floor(1000 + Math.random() * 50000),
+          entityId: i % 2 === 0 ? `CN00${Math.floor(Math.random() * 50) + 1}` : `SP00${Math.floor(Math.random() * 20) + 1}`
+        }))
       }
-    }, null, 2);
+    };
     
-    // Create a blob from the data
-    const blob = new Blob([mockBackupData], { type: 'application/json' });
-    
-    // Create a URL for the blob
-    const url = URL.createObjectURL(blob);
-    
-    // Create a temporary anchor element
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup-${backupId}-${new Date().toISOString().split('T')[0]}.json`;
-    
-    // Append the anchor to the document, click it, and remove it
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    // Clean up the URL object
-    URL.revokeObjectURL(url);
-    
-    toast.success("Backup file is being downloaded.");
+    // Create a blob and download it
+    const dataStr = JSON.stringify(mockData);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.download = `vyas_accounting_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
-  const handleUploadBackup = () => {
-    setUploadDialogOpen(true);
-  };
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
   };
   
-  const handleUploadSubmit = () => {
-    if (!selectedFile) {
-      toast.error("Please select a backup file first.");
-      return;
-    }
+  const handleRestoreConfirm = () => {
+    setConfirmRestoreOpen(false);
+    if (!selectedFile) return;
     
-    setUploadDialogOpen(false);
-    setRestoreConfirmOpen(true);
-  };
-  
-  const confirmRestore = () => {
-    setRestoreConfirmOpen(false);
-    
-    // Simulate file reading and restore process
     setIsRestoring(true);
     setRestoreProgress(0);
     
+    // Simulate restore process
     const interval = setInterval(() => {
       setRestoreProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsRestoring(false);
+          toast.success("Data restored successfully!");
           setSelectedFile(null);
-          toast.success("Backup file successfully restored!");
           return 100;
         }
         return prev + 5;
       });
-    }, 100);
-  };
-  
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <Check className="h-5 w-5 text-green-500" />;
-      case "failed":
-        return <X className="h-5 w-5 text-red-500" />;
-      case "pending":
-        return <Clock className="h-5 w-5 text-amber-500" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-gray-500" />;
-    }
+    }, 200);
   };
   
   return (
@@ -175,294 +135,314 @@ const Backup = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Backup & Restore</h1>
             <p className="text-muted-foreground">
-              Manage your data backups and restore operations.
+              Manage your accounting data backups and restores
             </p>
           </div>
-          
-          <Button onClick={() => window.location.reload()}>
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
-          </Button>
         </div>
-        
-        {isRestoring && (
-          <Card className="border-amber-500">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">Restoring backup...</span>
-                  <span>{restoreProgress}%</span>
-                </div>
-                <Progress value={restoreProgress} className="h-2" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
         
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Create Backup Card */}
+          {/* Backup Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <HardDrive className="mr-2 h-5 w-5 text-vyc-primary" />
-                Create Backup
+                <Download className="mr-2 h-5 w-5" /> Backup Data
               </CardTitle>
               <CardDescription>
-                Create a full backup of your accounting data
+                Create a backup of all your accounting data
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span>Last backup: {formatNepaliDate(new Date())}</span>
-                  <span>Database size: 15.2 MB</span>
-                </div>
-                
-                {isBackingUp && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Creating backup...</span>
-                      <span>{backupProgress}%</span>
-                    </div>
-                    <Progress value={backupProgress} />
+            <CardContent className="space-y-4">
+              <div className="rounded-md bg-muted/50 p-4">
+                <div className="flex items-center space-x-4">
+                  <div className="rounded-full bg-primary/20 p-2">
+                    <Database className="h-6 w-6 text-primary" />
                   </div>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button 
-                variant="outline"
-                onClick={handleUploadBackup}
-                disabled={isBackingUp || isRestoring}
-              >
-                <Upload className="mr-2 h-4 w-4" /> Upload Backup
-              </Button>
-              <Button 
-                className="bg-vyc-primary hover:bg-vyc-primary-dark"
-                onClick={handleBackup}
-                disabled={isBackingUp || isRestoring}
-              >
-                {isBackingUp ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Backing Up...
-                  </>
-                ) : (
-                  <>
-                    <HardDrive className="mr-2 h-4 w-4" /> Create Backup
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          {/* Restore Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileDown className="mr-2 h-5 w-5 text-vyc-primary" />
-                Backup History
-              </CardTitle>
-              <CardDescription>
-                View and restore previous backups
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="rounded-md border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/50 border-b">
-                        <th className="p-3 text-left">Name</th>
-                        <th className="p-3 text-left">Date</th>
-                        <th className="p-3 text-left">Size</th>
-                        <th className="p-3 text-center">Status</th>
-                        <th className="p-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mockBackups.map((backup) => (
-                        <tr key={backup.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3">{backup.name}</td>
-                          <td className="p-3">{formatNepaliDate(backup.date)}</td>
-                          <td className="p-3">{backup.size}</td>
-                          <td className="p-3 flex justify-center">
-                            {getStatusIcon(backup.status)}
-                          </td>
-                          <td className="p-3 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDownload(backup.id)}
-                                disabled={isBackingUp || isRestoring || backup.status !== "completed"}
-                                title="Download backup"
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleRestore(backup.id)}
-                                disabled={isBackingUp || isRestoring || backup.status !== "completed"}
-                              >
-                                {isRestoring ? (
-                                  <RefreshCw className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  "Restore"
-                                )}
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="text-sm text-muted-foreground">
-              Note: Restoring a backup will replace all current data. Always create a new backup before restoring.
-            </CardFooter>
-          </Card>
-        </div>
-        
-        {/* Backup Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Backup Settings</CardTitle>
-            <CardDescription>Configure automated backup schedule and storage options</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Automated Backups</h3>
-                
-                <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="enable-auto" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                  <label htmlFor="enable-auto">Enable automated backups</label>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Backup frequency</label>
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="daily">Daily</option>
-                    <option value="weekly" selected>Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Time of day</label>
-                  <input 
-                    type="time" 
-                    value="01:00"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                  />
+                  <div>
+                    <h3 className="font-medium">Current Data Size</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Approximately 2.5 MB of data will be backed up
+                    </p>
+                  </div>
                 </div>
               </div>
               
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Backup Retention</h3>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Keep backups for</label>
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="7">7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="30" selected>30 days</option>
-                    <option value="90">90 days</option>
-                    <option value="365">1 year</option>
-                    <option value="0">Forever</option>
-                  </select>
+              <div className="rounded-md bg-muted/50 p-4">
+                <div className="flex items-center space-x-4">
+                  <div className="rounded-full bg-primary/20 p-2">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Fiscal Year</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Current fiscal year: {fiscalYear.year}
+                    </p>
+                  </div>
                 </div>
-                
+              </div>
+              
+              {isBackingUp && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Maximum number of backups</label>
-                  <input 
-                    type="number" 
-                    value="10" 
-                    min="1" 
-                    max="100"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" 
-                  />
+                  <div className="flex justify-between text-sm">
+                    <span>Backup in progress...</span>
+                    <span>{backupProgress}%</span>
+                  </div>
+                  <Progress value={backupProgress} />
                 </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={handleBackup} 
+                disabled={isBackingUp}
+                className="w-full"
+              >
+                {isBackingUp ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Backing up...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Backup Now
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          {/* Restore Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Upload className="mr-2 h-5 w-5" /> Restore Data
+              </CardTitle>
+              <CardDescription>
+                Restore your data from a previous backup file
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md bg-amber-50 border border-amber-200 p-4 text-amber-800">
+                <div className="flex items-start space-x-4">
+                  <AlertTriangle className="h-6 w-6 flex-shrink-0 text-amber-600" />
+                  <div>
+                    <h3 className="font-medium text-amber-900">Warning</h3>
+                    <p className="text-sm">
+                      Restoring data will replace your current data. This action cannot be undone.
+                      Make sure to backup your current data before proceeding.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center border-2 border-dashed rounded-md p-6">
+                {selectedFile ? (
+                  <div className="text-center">
+                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="font-medium">{selectedFile.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2"
+                      onClick={() => setSelectedFile(null)}
+                    >
+                      Change File
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center cursor-pointer">
+                    <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium">Click to select backup file</p>
+                    <p className="text-xs text-muted-foreground">or drag and drop</p>
+                    <Input 
+                      type="file" 
+                      accept=".json" 
+                      className="hidden" 
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                )}
+              </div>
+              
+              {isRestoring && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Restore in progress...</span>
+                    <span>{restoreProgress}%</span>
+                  </div>
+                  <Progress value={restoreProgress} />
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={() => setConfirmRestoreOpen(true)} 
+                disabled={!selectedFile || isRestoring}
+                className="w-full"
+                variant="outline"
+              >
+                {isRestoring ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Restore from Backup
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+        
+        {/* Backup History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <HardDrive className="mr-2 h-5 w-5" /> Backup History
+            </CardTitle>
+            <CardDescription>
+              View your previous backup records
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="py-3 px-4 text-left">Date</th>
+                    <th className="py-3 px-4 text-left">Size</th>
+                    <th className="py-3 px-4 text-left">Type</th>
+                    <th className="py-3 px-4 text-left">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backupHistory.map((backup, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="py-3 px-4">{backup.date}</td>
+                      <td className="py-3 px-4">{backup.size}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          backup.type === "Automatic" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+                        }`}>
+                          {backup.type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="flex items-center text-green-600">
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          {backup.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Auto Backup Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Lock className="mr-2 h-5 w-5" /> Backup Settings
+            </CardTitle>
+            <CardDescription>
+              Configure automatic backup settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Auto Backup</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enable automatic backups on a schedule
+                </p>
+              </div>
+              <div>
+                <input type="checkbox" id="autoBackup" className="sr-only peer" defaultChecked />
+                <label 
+                  htmlFor="autoBackup" 
+                  className="relative inline-flex items-center h-6 rounded-full w-11 bg-gray-300 cursor-pointer transition-colors duration-300 ease-in-out peer-checked:bg-primary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-primary"
+                >
+                  <span className="inline-block w-4 h-4 transform transition duration-300 ease-in-out bg-white rounded-full translate-x-1 peer-checked:translate-x-6"></span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Backup Frequency</label>
+                <select className="w-full rounded-md border border-input bg-background px-3 py-2">
+                  <option>Daily</option>
+                  <option>Weekly</option>
+                  <option>Monthly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Retention Period</label>
+                <select className="w-full rounded-md border border-input bg-background px-3 py-2">
+                  <option>1 Week</option>
+                  <option>2 Weeks</option>
+                  <option>1 Month</option>
+                  <option>3 Months</option>
+                  <option>6 Months</option>
+                </select>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end">
-            <Button className="bg-vyc-primary hover:bg-vyc-primary-dark">
-              Save Settings
-            </Button>
+          <CardFooter className="flex justify-end space-x-4">
+            <Button variant="outline">Cancel</Button>
+            <Button onClick={() => toast.success("Backup settings saved!")}>Save Settings</Button>
           </CardFooter>
         </Card>
-      </div>
-
-      {/* Upload Backup Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Backup</DialogTitle>
-            <DialogDescription>
-              Upload a backup file to restore your data. This will replace your current data.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-6">
-              <Upload className="h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-center text-gray-500 mb-2">
-                Click to select a backup file or drag and drop
-              </p>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                className="hidden" 
-                accept=".json,.bak"
-                onChange={handleFileChange}
-              />
-              <Button 
-                variant="outline" 
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Select File
-              </Button>
-              {selectedFile && (
-                <p className="mt-2 text-sm text-green-600">
-                  Selected: {selectedFile.name}
+        
+        {/* Restore Confirmation Dialog */}
+        <Dialog open={confirmRestoreOpen} onOpenChange={setConfirmRestoreOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Data Restore</DialogTitle>
+              <DialogDescription>
+                This action will replace all your current data with the backup.
+                This operation cannot be undone. Are you sure you want to proceed?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                <p className="text-sm">
+                  All current data including customers, suppliers, transactions, 
+                  and settings will be replaced by the data in the backup file.
                 </p>
-              )}
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              className="bg-vyc-primary hover:bg-vyc-primary-dark" 
-              onClick={handleUploadSubmit}
-              disabled={!selectedFile}
-            >
-              Upload & Continue
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirm Restore Dialog */}
-      <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Restore</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to restore from this backup? This will replace all current data and cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRestore} className="bg-vyc-primary hover:bg-vyc-primary-dark">
-              Yes, Restore
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmRestoreOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleRestoreConfirm}
+              >
+                Yes, Restore Data
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </MainLayout>
   );
 };

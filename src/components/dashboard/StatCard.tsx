@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface StatCardProps {
   title: string;
@@ -14,6 +15,7 @@ interface StatCardProps {
     isPositive: boolean;
   };
   className?: string;
+  navigateTo?: string;  // Add navigation path
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -23,9 +25,21 @@ const StatCard: React.FC<StatCardProps> = ({
   description,
   trend,
   className,
+  navigateTo,
 }) => {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (navigateTo) {
+      navigate(navigateTo);
+    }
+  };
+  
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card 
+      className={cn("overflow-hidden", navigateTo && "cursor-pointer hover:shadow-md transition-all", className)}
+      onClick={handleClick}
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>

@@ -13,9 +13,19 @@ import { getGreeting } from "@/utils/nepali-date";
 import DateTimeDisplay from "@/components/dashboard/DateTimeDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const greeting = getGreeting();
+  const navigate = useNavigate();
+  
+  const handleCustomerClick = (customerId: string) => {
+    navigate(`/customers/${customerId}`);
+  };
+  
+  const handleSupplierClick = (supplierId: string) => {
+    navigate(`/suppliers/${supplierId}`);
+  };
   
   return (
     <MainLayout>
@@ -34,6 +44,7 @@ const Dashboard = () => {
             description="This Month"
             icon={CreditCard}
             trend={{ value: 12, isPositive: true }}
+            navigateTo="/analytics?tab=sales"
           />
           <StatCard
             title="Total Purchases"
@@ -41,6 +52,7 @@ const Dashboard = () => {
             description="This Month"
             icon={ShoppingCart}
             trend={{ value: 5, isPositive: false }}
+            navigateTo="/analytics?tab=purchases"
           />
           <StatCard
             title="Total Receivable"
@@ -48,6 +60,7 @@ const Dashboard = () => {
             description="Outstanding"
             icon={DollarSign}
             trend={{ value: 18, isPositive: true }}
+            navigateTo="/analytics?tab=receivables"
           />
           <StatCard
             title="Total Payable"
@@ -55,6 +68,7 @@ const Dashboard = () => {
             description="Outstanding"
             icon={DollarSign}
             trend={{ value: 10, isPositive: false }}
+            navigateTo="/analytics?tab=payables"
           />
         </div>
         
@@ -75,7 +89,8 @@ const Dashboard = () => {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                          className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0 hover:bg-muted/20 p-2 rounded cursor-pointer transition-colors"
+                          onClick={() => handleCustomerClick(`CN00${i + 1}`)}
                         >
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-vyc-primary/10 flex items-center justify-center">
@@ -110,7 +125,8 @@ const Dashboard = () => {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                          className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0 hover:bg-muted/20 p-2 rounded cursor-pointer transition-colors"
+                          onClick={() => handleSupplierClick(`SP00${i + 1}`)}
                         >
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-vyc-primary/10 flex items-center justify-center">

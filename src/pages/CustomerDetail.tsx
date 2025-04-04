@@ -1,5 +1,6 @@
+
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,15 +20,18 @@ import {
   RefreshCw, 
   Printer, 
   FileDown,
-  X
+  X,
+  Clock
 } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
-import { formatNepaliDate } from "@/utils/nepali-date";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InvoiceView from "@/components/transactions/InvoiceView";
 import TransactionActionButtons from "@/components/transactions/TransactionActionButtons";
 import TransactionForm from "@/components/transactions/TransactionForm";
 import { toast } from "@/components/ui/toast-utils";
+import { getCurrentFiscalYear, formatFiscalYear } from "@/utils/nepali-fiscal-year";
+import { printComponent, exportToPdf, handleFiscalYearTransition } from "@/utils/print-utils";
+import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 
 // Mock data for customer details
 const mockCustomersData = {
@@ -81,48 +85,75 @@ const mockCustomersData = {
 // Mock transaction data
 const mockTransactions = {
   "CN001": [
-    { id: "T001", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 5000, balance: 5000 },
-    { id: "T002", date: "2081-01-20", nepaliDate: "२०८१-०१-२०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 3000 },
-    { id: "T003", date: "2081-02-05", nepaliDate: "२०८१-०२-०५", type: "Purchase", description: "Additional Items", amount: 8000, balance: 11000 },
-    { id: "T004", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Monthly Payment", amount: -3000, balance: 8000 },
-    { id: "T005", date: "2081-03-10", nepaliDate: "२०८१-०३-१०", type: "Purchase", description: "Seasonal Products", amount: 7000, balance: 15000 }
+    { id: "T001", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 5000, balance: 5000, fiscalYear: "2080/2081" },
+    { id: "T002", date: "2081-01-20", nepaliDate: "२०८१-०१-२०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 3000, fiscalYear: "2080/2081" },
+    { id: "T003", date: "2081-02-05", nepaliDate: "२०८१-०२-०५", type: "Purchase", description: "Additional Items", amount: 8000, balance: 11000, fiscalYear: "2080/2081" },
+    { id: "T004", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Monthly Payment", amount: -3000, balance: 8000, fiscalYear: "2080/2081" },
+    { id: "T005", date: "2081-03-10", nepaliDate: "२०८१-०३-१०", type: "Purchase", description: "Seasonal Products", amount: 7000, balance: 15000, fiscalYear: "2080/2081" }
   ],
   "CN002": [
-    { id: "T006", date: "2081-01-10", nepaliDate: "२०८१-०१-१०", type: "Purchase", description: "Initial Purchase", amount: 3000, balance: 3000 },
-    { id: "T007", date: "2081-01-30", nepaliDate: "२०८१-०१-३०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 1000 },
-    { id: "T008", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Purchase", description: "Bulk Order", amount: 7000, balance: 8000 },
-    { id: "T009", date: "2081-02-25", nepaliDate: "२०८१-०२-२५", type: "Payment", description: "Installment", amount: -13000, balance: -5000 }
+    { id: "T006", date: "2081-01-10", nepaliDate: "२०८१-०१-१०", type: "Purchase", description: "Initial Purchase", amount: 3000, balance: 3000, fiscalYear: "2080/2081" },
+    { id: "T007", date: "2081-01-30", nepaliDate: "२०८१-०१-३०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 1000, fiscalYear: "2080/2081" },
+    { id: "T008", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Purchase", description: "Bulk Order", amount: 7000, balance: 8000, fiscalYear: "2080/2081" },
+    { id: "T009", date: "2081-02-25", nepaliDate: "२०८१-०२-२५", type: "Payment", description: "Installment", amount: -13000, balance: -5000, fiscalYear: "2080/2081" }
   ],
   "CN003": [
-    { id: "T010", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Initial Purchase", amount: 15000, balance: 15000 },
-    { id: "T011", date: "2081-01-25", nepaliDate: "२०८१-०१-२५", type: "Payment", description: "Down Payment", amount: -5000, balance: 10000 },
-    { id: "T012", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Purchase", description: "Supplementary Items", amount: 10000, balance: 20000 },
-    { id: "T013", date: "2081-03-05", nepaliDate: "२०८१-०३-०५", type: "Payment", description: "Partial Payment", amount: -5000, balance: 15000 },
-    { id: "T014", date: "2081-03-20", nepaliDate: "२०८१-०३-२०", type: "Purchase", description: "New Inventory", amount: 10000, balance: 25000 }
+    { id: "T010", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Initial Purchase", amount: 15000, balance: 15000, fiscalYear: "2080/2081" },
+    { id: "T011", date: "2081-01-25", nepaliDate: "२०८१-०१-२५", type: "Payment", description: "Down Payment", amount: -5000, balance: 10000, fiscalYear: "2080/2081" },
+    { id: "T012", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Purchase", description: "Supplementary Items", amount: 10000, balance: 20000, fiscalYear: "2080/2081" },
+    { id: "T013", date: "2081-03-05", nepaliDate: "२०८१-०३-०५", type: "Payment", description: "Partial Payment", amount: -5000, balance: 15000, fiscalYear: "2080/2081" },
+    { id: "T014", date: "2081-03-20", nepaliDate: "२०८१-०३-२०", type: "Purchase", description: "New Inventory", amount: 10000, balance: 25000, fiscalYear: "2080/2081" }
   ],
   "CN004": [
-    { id: "T015", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 8000, balance: 8000 },
-    { id: "T016", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Payment", description: "Full Payment", amount: -8000, balance: 0 }
+    { id: "T015", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 8000, balance: 8000, fiscalYear: "2080/2081" },
+    { id: "T016", date: "2081-02-10", nepaliDate: "२०८१-०२-१०", type: "Payment", description: "Full Payment", amount: -8000, balance: 0, fiscalYear: "2080/2081" }
   ],
   "CN005": [
-    { id: "T017", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Initial Purchase", amount: 10000, balance: 10000 },
-    { id: "T018", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Partial Payment", amount: -4000, balance: 6000 },
-    { id: "T019", date: "2081-03-01", nepaliDate: "२०८१-०३-०१", type: "Purchase", description: "Additional Products", amount: 6000, balance: 12000 }
+    { id: "T017", date: "2081-01-05", nepaliDate: "२०८१-०१-०५", type: "Purchase", description: "Initial Purchase", amount: 10000, balance: 10000, fiscalYear: "2080/2081" },
+    { id: "T018", date: "2081-02-15", nepaliDate: "२०८१-०२-१५", type: "Payment", description: "Partial Payment", amount: -4000, balance: 6000, fiscalYear: "2080/2081" },
+    { id: "T019", date: "2081-03-01", nepaliDate: "२०८१-०३-०१", type: "Purchase", description: "Additional Products", amount: 6000, balance: 12000, fiscalYear: "2080/2081" }
+  ]
+};
+
+// Mock data for previous fiscal year
+const mockPreviousTransactions = {
+  "CN001": [
+    { id: "PT001", date: "2080-01-10", nepaliDate: "२०८०-०१-१०", type: "Purchase", description: "Initial Purchase", amount: 12000, balance: 12000, fiscalYear: "2079/2080" },
+    { id: "PT002", date: "2080-02-15", nepaliDate: "२०८०-०२-१५", type: "Payment", description: "Partial Payment", amount: -7000, balance: 5000, fiscalYear: "2079/2080" },
+    { id: "PT003", date: "2080-03-20", nepaliDate: "२०८०-०३-२०", type: "Purchase", description: "Additional Items", amount: 8000, balance: 13000, fiscalYear: "2079/2080" },
+    { id: "PT004", date: "2080-03-30", nepaliDate: "२०८०-०३-३०", type: "Payment", description: "End Year Payment", amount: -8000, balance: 5000, fiscalYear: "2079/2080", isClosing: true }
   ]
 };
 
 const CustomerDetail = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("all");
   const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [transactionFormOpen, setTransactionFormOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<"sale" | "purchase" | "payment">("sale");
+  const [showPreviousFiscalYear, setShowPreviousFiscalYear] = useState(false);
+  const [printViewOpen, setPrintViewOpen] = useState(false);
   
   const customer = customerId ? mockCustomersData[customerId] : null;
-  const transactions = customerId ? (mockTransactions[customerId] || []) : [];
+  const currentTransactions = customerId ? (mockTransactions[customerId] || []) : [];
+  const previousTransactions = customerId ? (mockPreviousTransactions[customerId] || []) : [];
+  
+  const currentFiscalYear = getCurrentFiscalYear().year;
+  
+  // Get transactions based on fiscal year selection
+  const transactions = showPreviousFiscalYear 
+    ? previousTransactions 
+    : currentTransactions;
+  
+  // Process transactions for fiscal year handling
+  const processedTransactions = handleFiscalYearTransition(
+    [...currentTransactions, ...previousTransactions], 
+    currentFiscalYear
+  );
   
   const filteredTransactions = transactions.filter(transaction => {
     if (activeTab === "all") return true;
@@ -134,6 +165,12 @@ const CustomerDetail = () => {
   };
 
   const handleTransactionClick = (transaction) => {
+    // Handle opening balance entries by switching to previous fiscal year
+    if (transaction.isOpening) {
+      setShowPreviousFiscalYear(true);
+      return;
+    }
+    
     setSelectedTransaction(transaction);
     setInvoiceDialogOpen(true);
   };
@@ -149,13 +186,23 @@ const CustomerDetail = () => {
   };
   
   const handlePrint = () => {
-    window.print();
-    toast.success("Printing initiated.");
+    setPrintViewOpen(true);
+  };
+  
+  const executePrint = () => {
+    printComponent("customer-print-view");
   };
   
   const handleDownload = () => {
-    toast.success("Download initiated.");
-    console.log("Download transaction", selectedTransaction);
+    setPrintViewOpen(true);
+    setTimeout(() => {
+      exportToPdf("customer-print-view", `Customer_${customerId}_Report.pdf`);
+      // Don't auto-close the print view to allow user to see it
+    }, 500);
+  };
+  
+  const handleFiscalYearToggle = () => {
+    setShowPreviousFiscalYear(!showPreviousFiscalYear);
   };
   
   if (!customer) {
@@ -209,6 +256,9 @@ const CustomerDetail = () => {
               <div className="md:text-center">
                 <p className="text-sm text-muted-foreground">Customer ID</p>
                 <p className="font-mono font-bold">{customer.id}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Fiscal Year: {showPreviousFiscalYear ? "2079/2080" : currentFiscalYear}
+                </p>
               </div>
               
               <div className="md:text-right">
@@ -216,6 +266,15 @@ const CustomerDetail = () => {
                 <p className={`font-bold text-xl ${customer.type === "DR" ? "text-vyc-error" : "text-vyc-success"}`}>
                   रू {formatCurrency(Math.abs(customer.balance))} {customer.type}
                 </p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mt-1"
+                  onClick={handleFiscalYearToggle}
+                >
+                  <Clock className="h-3 w-3 mr-1" />
+                  {showPreviousFiscalYear ? "Show Current Year" : "Show Previous Year"}
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -232,7 +291,14 @@ const CustomerDetail = () => {
         
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Transaction History</h2>
+            <h2 className="text-2xl font-bold">
+              Transaction History
+              {showPreviousFiscalYear && (
+                <span className="ml-2 text-sm bg-amber-100 text-amber-800 py-1 px-2 rounded-full">
+                  Previous Fiscal Year (2079/2080)
+                </span>
+              )}
+            </h2>
             
             <div className="flex items-center space-x-2 mt-2 sm:mt-0">
               <div className="flex items-center space-x-2">
@@ -270,13 +336,22 @@ const CustomerDetail = () => {
             </TabsList>
             
             <TabsContent value="all" className="mt-4">
-              <TransactionTable transactions={filteredTransactions} onTransactionClick={handleTransactionClick} />
+              <TransactionTable 
+                transactions={filteredTransactions} 
+                onTransactionClick={handleTransactionClick}
+              />
             </TabsContent>
             <TabsContent value="purchase" className="mt-4">
-              <TransactionTable transactions={filteredTransactions} onTransactionClick={handleTransactionClick} />
+              <TransactionTable 
+                transactions={filteredTransactions} 
+                onTransactionClick={handleTransactionClick}
+              />
             </TabsContent>
             <TabsContent value="payment" className="mt-4">
-              <TransactionTable transactions={filteredTransactions} onTransactionClick={handleTransactionClick} />
+              <TransactionTable 
+                transactions={filteredTransactions} 
+                onTransactionClick={handleTransactionClick}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -308,6 +383,82 @@ const CustomerDetail = () => {
             entity={customer}
           />
         )}
+        
+        <Dialog open={printViewOpen} onOpenChange={setPrintViewOpen}>
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="flex items-center justify-between">
+              <DialogTitle>Print Preview</DialogTitle>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm" onClick={executePrint}>
+                  <Printer className="mr-2 h-4 w-4" /> Print
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportToPdf("customer-print-view", `Customer_${customerId}_Report.pdf`)}>
+                  <FileDown className="mr-2 h-4 w-4" /> Save as PDF
+                </Button>
+              </div>
+            </DialogHeader>
+            
+            <div id="customer-print-view">
+              <TransactionPrintTemplate 
+                companyName="Vyas Accounting"
+                companyAddress="Kathmandu, Nepal"
+                companyPhone="+977 1234567890"
+                companyEmail="info@vyasaccounting.com"
+                transaction={selectedTransaction || {
+                  id: "SUMMARY",
+                  date: new Date().toISOString().split('T')[0],
+                  nepaliDate: "२०८१-०४-०१",
+                  type: "Customer Statement",
+                  description: "Statement of Account",
+                  amount: customer.balance,
+                  balance: customer.balance
+                }}
+                entity={customer}
+                dateRange={dateFilter.from && dateFilter.to ? {
+                  from: dateFilter.from,
+                  to: dateFilter.to
+                } : undefined}
+              />
+              
+              {/* Add transaction list to the print view */}
+              <div className="mt-8 px-8">
+                <h3 className="font-bold mb-4">Transaction History</h3>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border p-2 text-left">Date</th>
+                      <th className="border p-2 text-left">Reference</th>
+                      <th className="border p-2 text-left">Description</th>
+                      <th className="border p-2 text-left">Type</th>
+                      <th className="border p-2 text-right">Amount</th>
+                      <th className="border p-2 text-right">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTransactions.map((transaction) => (
+                      <tr key={transaction.id}>
+                        <td className="border p-2">{transaction.nepaliDate}</td>
+                        <td className="border p-2">{transaction.id}</td>
+                        <td className="border p-2">{transaction.description}</td>
+                        <td className="border p-2">{transaction.type}</td>
+                        <td className="border p-2 text-right">
+                          रू {formatCurrency(Math.abs(transaction.amount))}
+                        </td>
+                        <td className="border p-2 text-right">
+                          रू {formatCurrency(Math.abs(transaction.balance))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                <div className="mt-8 text-right">
+                  <p><strong>Closing Balance:</strong> रू {formatCurrency(Math.abs(customer.balance))} {customer.type}</p>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
@@ -339,7 +490,10 @@ const TransactionTable = ({ transactions, onTransactionClick }) => {
           {transactions.map((transaction) => (
             <TableRow 
               key={transaction.id} 
-              className="hover:bg-muted/30 cursor-pointer"
+              className={`hover:bg-muted/30 cursor-pointer ${
+                transaction.isOpening ? 'bg-blue-50' : 
+                transaction.isClosing ? 'bg-amber-50' : ''
+              }`}
               onClick={() => onTransactionClick(transaction)}
             >
               <TableCell className="font-mono">{transaction.id}</TableCell>
@@ -349,9 +503,32 @@ const TransactionTable = ({ transactions, onTransactionClick }) => {
                   <span className="text-xs text-muted-foreground">{transaction.date}</span>
                 </div>
               </TableCell>
-              <TableCell>{transaction.description}</TableCell>
               <TableCell>
-                <span className={transaction.type === 'Purchase' ? 'text-vyc-error' : 'text-vyc-success'}>
+                {transaction.isOpening ? (
+                  <div className="flex items-center">
+                    <span className="font-medium">{transaction.description}</span>
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
+                      Click to view previous year
+                    </span>
+                  </div>
+                ) : transaction.isClosing ? (
+                  <div className="flex items-center">
+                    <span className="font-medium">{transaction.description}</span>
+                    <span className="ml-2 text-xs bg-amber-100 text-amber-800 py-1 px-2 rounded-full">
+                      End of Fiscal Year
+                    </span>
+                  </div>
+                ) : (
+                  transaction.description
+                )}
+              </TableCell>
+              <TableCell>
+                <span className={
+                  transaction.type === 'Purchase' ? 'text-vyc-error' : 
+                  transaction.type === 'Payment' ? 'text-vyc-success' :
+                  transaction.type === 'Opening' ? 'text-vyc-primary' :
+                  'text-vyc-error'
+                }>
                   {transaction.type}
                 </span>
               </TableCell>

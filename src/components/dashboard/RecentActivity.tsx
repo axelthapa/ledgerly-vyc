@@ -2,6 +2,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface Activity {
   id: string;
@@ -10,52 +11,71 @@ interface Activity {
   amount: string;
   date: string;
   status: "completed" | "pending" | "failed";
+  entityId?: string; // Added entityId for navigation
+  entityType?: "customer" | "supplier";
 }
 
 const mockActivities: Activity[] = [
   {
-    id: "1",
+    id: "T001",
     type: "sale",
     description: "Sale to Customer: John Doe",
     amount: "Rs 50,000.00",
     date: "Today, 10:30 AM",
     status: "completed",
+    entityId: "CN001",
+    entityType: "customer"
   },
   {
-    id: "2",
+    id: "T002",
     type: "purchase",
     description: "Purchase from Supplier: Tech Solutions",
     amount: "Rs 35,000.00",
     date: "Today, 9:15 AM",
     status: "completed",
+    entityId: "SP001",
+    entityType: "supplier"
   },
   {
-    id: "3",
+    id: "T003",
     type: "payment",
     description: "Payment received from: Sarah Smith",
     amount: "Rs 15,000.00",
     date: "Yesterday, 4:30 PM",
     status: "completed",
+    entityId: "CN002",
+    entityType: "customer"
   },
   {
-    id: "4",
+    id: "T004",
     type: "sale",
     description: "Sale to Customer: Rajesh Kumar",
     amount: "Rs 22,500.00",
     date: "Yesterday, 2:45 PM",
     status: "pending",
+    entityId: "CN003",
+    entityType: "customer"
   },
   {
-    id: "5",
+    id: "T005",
     type: "purchase",
     description: "Purchase from Supplier: Office Supplies Ltd",
     amount: "Rs 8,750.00",
     date: "2 days ago",
     status: "failed",
+    entityId: "SP002",
+    entityType: "supplier"
   },
 ];
 
 const RecentActivity: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleActivityClick = (activity: Activity) => {
+    // Navigate to transaction details
+    navigate(`/transactions?id=${activity.id}`);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -66,7 +86,8 @@ const RecentActivity: React.FC = () => {
           {mockActivities.map((activity) => (
             <div
               key={activity.id}
-              className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+              className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0 hover:bg-muted/20 p-2 rounded cursor-pointer transition-colors"
+              onClick={() => handleActivityClick(activity)}
             >
               <div>
                 <div className="flex items-center gap-2">
