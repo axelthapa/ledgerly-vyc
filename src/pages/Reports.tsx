@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
 import { toast } from "@/components/ui/toast-utils";
+import { generateTransactionReport } from "@/utils/print-utils";
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("sales");
@@ -91,7 +91,6 @@ const Reports = () => {
     }
   };
 
-  // Mock data for the reports
   const generateReportData = (tab: string) => {
     switch (tab) {
       case "sales":

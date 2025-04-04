@@ -25,6 +25,7 @@ interface TransactionPrintProps {
     description: string;
     amount: number;
     balance: number;
+    paymentMethod?: string;
     items?: LineItem[];
   };
   entity: {
@@ -33,11 +34,14 @@ interface TransactionPrintProps {
     address: string;
     phone: string;
     pan?: string;
+    type?: string;
   };
   dateRange?: {
     from: string;
     to: string;
   };
+  transactions?: any[];
+  showTransactions?: boolean;
 }
 
 const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
@@ -48,10 +52,15 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
   companyPan,
   transaction,
   entity,
-  dateRange
+  dateRange,
+  transactions = [],
+  showTransactions = false
 }) => {
   const fiscalYear = getCurrentFiscalYear();
   const isOpeningBalance = transaction.description?.toLowerCase().includes("opening balance");
+  const isPurchase = transaction.type === "Purchase";
+  const isSale = transaction.type === "Sale";
+  const isPayment = transaction.type === "Payment";
 
   // Format amount in words
   const amountInWords = convertToWords(Math.abs(transaction.amount));
@@ -67,9 +76,10 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
         {companyPan && <p>PAN: {companyPan}</p>}
         <div className="mt-4 border-t border-b py-2">
           <h2 className="text-xl font-semibold">
-            {transaction.type === "Purchase" ? "PURCHASE INVOICE" : 
-             transaction.type === "Sale" ? "SALES INVOICE" : 
-             "PAYMENT RECEIPT"}
+            {isPurchase ? "PURCHASE INVOICE" : 
+             isSale ? "SALES INVOICE" : 
+             isPayment ? "PAYMENT RECEIPT" :
+             "TRANSACTION REPORT"}
           </h2>
         </div>
       </div>
@@ -77,7 +87,11 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
       {/* Document Info */}
       <div className="flex justify-between mb-6">
         <div>
-          <h3 className="font-semibold">{transaction.type === "Purchase" ? "Supplier" : "Customer"} Details</h3>
+          <h3 className="font-semibold">
+            {(isPurchase || isSale || isPayment) ? 
+              (isPurchase ? "Supplier" : "Customer") + " Details" : 
+              "Entity Details"}
+          </h3>
           <p><strong>{entity.name}</strong></p>
           <p>{entity.address}</p>
           <p>Phone: {entity.phone}</p>
@@ -132,14 +146,49 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
       )}
 
       {/* Payment Details (if it's a payment) */}
-      {transaction.type === "Payment" && (
+      {isPayment && (
         <div className="mb-6 border rounded p-4">
           <div className="flex justify-between">
             <h3 className="font-semibold">Payment Details</h3>
             <p className="font-bold">रू {formatCurrency(Math.abs(transaction.amount))}</p>
           </div>
           <p className="mt-2">Payment for: {transaction.description}</p>
-          <p>Payment method: Cash</p>
+          <p>Payment method: {transaction.paymentMethod || "Cash"}</p>
+        </div>
+      )}
+
+      {/* Transaction History (if showing transactions) */}
+      {showTransactions && transactions && transactions.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-bold mb-2">Transaction History</h3>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2 text-left">Date</th>
+                <th className="border p-2 text-left">Reference</th>
+                <th className="border p-2 text-left">Description</th>
+                <th className="border p-2 text-left">Type</th>
+                <th className="border p-2 text-right">Amount</th>
+                <th className="border p-2 text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((trx, index) => (
+                <tr key={`${trx.id}-${index}`}>
+                  <td className="border p-2">{trx.nepaliDate}</td>
+                  <td className="border p-2">{trx.id}</td>
+                  <td className="border p-2">{trx.description}</td>
+                  <td className="border p-2">{trx.type}</td>
+                  <td className="border p-2 text-right">
+                    रू {formatCurrency(Math.abs(trx.amount))}
+                  </td>
+                  <td className="border p-2 text-right">
+                    रू {formatCurrency(Math.abs(trx.balance))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -153,6 +202,15 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
         <h3 className="font-semibold">Notes</h3>
         <p>{transaction.description}</p>
       </div>
+
+      {/* Current Balance Summary */}
+      {entity && entity.type && (
+        <div className="mb-6 text-right">
+          <p><strong>Closing Balance:</strong> रू {formatCurrency(Math.abs(transaction.balance))} {
+            transaction.balance < 0 ? 'DR' : 'CR'
+          }</p>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex justify-between pt-8 mt-8 border-t">

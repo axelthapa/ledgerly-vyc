@@ -2,6 +2,7 @@
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "@/components/ui/toast-utils";
+import { getCurrentFiscalYear } from "./nepali-fiscal-year";
 
 // Function to create a printable version of a component
 export const printComponent = (componentId: string) => {
@@ -20,6 +21,12 @@ export const printComponent = (componentId: string) => {
       .text-right { text-align: right; }
       .text-center { text-align: center; }
       .font-bold { font-weight: bold; }
+      h1, h2, h3 { margin-top: 0; }
+      .company-header { text-align: center; margin-bottom: 20px; }
+      .transaction-details { margin: 20px 0; }
+      .signature-area { display: flex; justify-content: space-between; margin-top: 50px; }
+      .signature-line { border-top: 1px dashed #000; width: 200px; }
+      .thank-you { text-align: center; margin-top: 30px; color: #555; }
       @media print {
         body { margin: 0; padding: 0; }
         button { display: none; }
@@ -161,3 +168,219 @@ export const handleFiscalYearTransition = (transactions: any[], currentFiscalYea
     all: [...currentYearTransactions, ...previousYearTransactions]
   };
 };
+
+// Function to generate a transaction report PDF
+export const generateTransactionReport = async ({
+  companyName,
+  companyAddress,
+  companyPhone,
+  companyEmail,
+  companyPan,
+  transaction,
+  entity,
+  dateRange,
+  transactions,
+  reportTitle = "Transaction Report"
+}: {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail?: string;
+  companyPan?: string;
+  transaction?: any;
+  entity?: any;
+  dateRange?: { from: string; to: string };
+  transactions?: any[];
+  reportTitle?: string;
+}) => {
+  // Create a container for the report
+  const reportContainer = document.createElement('div');
+  reportContainer.id = 'transaction-report-container';
+  reportContainer.style.position = 'fixed';
+  reportContainer.style.top = '-9999px'; // Hide it off-screen
+  reportContainer.style.left = '-9999px';
+  reportContainer.style.width = '800px'; // Set a fixed width for PDF generation
+  document.body.appendChild(reportContainer);
+  
+  // Current fiscal year
+  const fiscalYear = getCurrentFiscalYear();
+  
+  // HTML content for the report
+  reportContainer.innerHTML = `
+    <div class="report-container" style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px;">
+      <div class="company-header" style="text-align: center; margin-bottom: 20px;">
+        <h1 style="margin-bottom: 5px; font-size: 24px;">${companyName}</h1>
+        <p style="margin: 5px 0;">${companyAddress}</p>
+        <p style="margin: 5px 0;">Phone: ${companyPhone}${companyEmail ? ` | Email: ${companyEmail}` : ''}</p>
+        ${companyPan ? `<p style="margin: 5px 0;">PAN: ${companyPan}</p>` : ''}
+        <div style="margin-top: 15px; padding: 8px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">
+          <h2 style="margin: 0; font-size: 18px;">${reportTitle}</h2>
+        </div>
+      </div>
+      
+      ${entity ? `
+      <div class="entity-details" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+        <div>
+          <h3 style="margin-bottom: 5px;">${transaction?.type === "Purchase" ? "Supplier" : "Customer"} Details</h3>
+          <p style="margin: 3px 0;"><strong>${entity.name}</strong></p>
+          <p style="margin: 3px 0;">${entity.address}</p>
+          <p style="margin: 3px 0;">Phone: ${entity.phone}</p>
+          ${entity.pan ? `<p style="margin: 3px 0;">PAN: ${entity.pan}</p>` : ''}
+        </div>
+        <div style="text-align: right;">
+          ${transaction ? `<p style="margin: 3px 0;"><strong>Invoice #:</strong> ${transaction.id}</p>` : ''}
+          <p style="margin: 3px 0;"><strong>Date:</strong> ${transaction?.nepaliDate || new Date().toLocaleDateString()}</p>
+          <p style="margin: 3px 0;"><strong>Fiscal Year:</strong> ${fiscalYear.year}</p>
+          ${dateRange ? `
+          <p style="margin: 3px 0;"><strong>Report Period:</strong> ${dateRange.from} - ${dateRange.to}</p>
+          ` : ''}
+        </div>
+      </div>
+      ` : ''}
+      
+      ${transaction?.items && transaction.items.length > 0 ? `
+      <div class="line-items" style="margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #f2f2f2;">
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Item</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Quantity</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Rate</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${transaction.items.map(item => `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px;">${item.name}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item.quantity}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">रू ${formatNumber(item.rate)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">रू ${formatNumber(item.amount)}</td>
+            </tr>
+            `).join('')}
+            <tr>
+              <td colspan="3" style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: bold;">Total</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: bold;">
+                रू ${formatNumber(Math.abs(transaction.amount))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+      
+      ${transactions && transactions.length > 0 ? `
+      <div class="transactions-list" style="margin-bottom: 20px;">
+        <h3 style="margin-bottom: 10px;">Transaction History</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #f2f2f2;">
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Date</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Reference</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Type</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Amount</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${transactions.map(trx => `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px;">${trx.nepaliDate}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${trx.id}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${trx.description}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${trx.type}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">
+                रू ${formatNumber(Math.abs(trx.amount))}
+              </td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">
+                रू ${formatNumber(Math.abs(trx.balance))}
+              </td>
+            </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+      
+      ${transaction ? `
+      <div class="payment-summary" style="margin-bottom: 15px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
+        <p style="margin: 5px 0;"><strong>Amount in words:</strong> ${amountInWords(Math.abs(transaction.amount))}</p>
+        ${transaction.type === "Payment" ? `
+        <p style="margin: 5px 0;">Payment method: ${transaction.paymentMethod || "Cash"}</p>
+        ` : ''}
+      </div>
+      
+      <div class="notes-section" style="margin-bottom: 20px;">
+        <h3 style="margin-bottom: 5px;">Notes</h3>
+        <p style="margin: 0;">${transaction.description}</p>
+      </div>
+      ` : ''}
+      
+      ${entity && entity.balance ? `
+      <div class="balance-summary" style="margin-top: 20px; text-align: right;">
+        <p style="margin: 5px 0;"><strong>Closing Balance:</strong> रू ${formatNumber(Math.abs(entity.balance))} ${entity.type}</p>
+      </div>
+      ` : ''}
+      
+      <div class="signatures" style="display: flex; justify-content: space-between; margin-top: 50px;">
+        <div>
+          <p style="margin-bottom: 30px;"><strong>${entity ? "Customer" : "Prepared by"} Signature</strong></p>
+          <div style="border-top: 1px dashed #000; width: 200px;"></div>
+        </div>
+        <div style="text-align: right;">
+          <p style="margin-bottom: 30px;"><strong>For ${companyName}</strong></p>
+          <div style="border-top: 1px dashed #000; width: 200px; margin-left: auto;"></div>
+          <p style="font-size: 12px; margin-top: 5px;">Authorized Signature</p>
+        </div>
+      </div>
+      
+      <div class="thank-you" style="text-align: center; margin-top: 30px; color: #555;">
+        <p>Thank you for your business!</p>
+      </div>
+    </div>
+  `;
+  
+  try {
+    // Generate file name based on report type
+    let filename;
+    if (transaction) {
+      filename = `${transaction.type}_${transaction.id}.pdf`;
+    } else if (entity) {
+      filename = `${entity.id}_Statement.pdf`;
+    } else {
+      filename = `Transactions_Report.pdf`;
+    }
+    
+    // Export to PDF
+    await exportToPdf('transaction-report-container', filename);
+  } catch (error) {
+    console.error("Error generating report:", error);
+    toast.error("Failed to generate PDF report");
+  } finally {
+    // Clean up by removing the temporary element
+    if (document.body.contains(reportContainer)) {
+      document.body.removeChild(reportContainer);
+    }
+  }
+};
+
+// Helper functions for formatting
+function formatNumber(num: number): string {
+  return new Intl.NumberFormat('ne-NP', { 
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
+}
+
+function amountInWords(amount: number): string {
+  // This is a simplified version, in a real app you would use a library or more complex function
+  // For now, we're assuming the convertToWords function is available from currency.ts
+  try {
+    // Import dynamically to avoid circular dependencies
+    const { convertToWords } = require("./currency");
+    return convertToWords(amount);
+  } catch (e) {
+    return "Amount in words not available";
+  }
+}

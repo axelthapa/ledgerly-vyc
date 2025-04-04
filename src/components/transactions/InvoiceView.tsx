@@ -13,6 +13,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { generateTransactionReport } from "@/utils/print-utils";
 
 interface LineItem {
   id: string;
@@ -31,6 +32,7 @@ interface InvoiceProps {
     description: string;
     amount: number;
     balance: number;
+    paymentMethod?: string;
     items?: LineItem[];
   };
   customer: {
@@ -39,6 +41,7 @@ interface InvoiceProps {
     address: string;
     phone: string;
     pan?: string;
+    type?: string;
   };
   onPrint?: () => void;
   onDownload?: () => void;
@@ -106,28 +109,19 @@ const InvoiceView: React.FC<InvoiceProps> = ({
       return;
     }
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow && invoiceRef.current) {
-      printWindow.document.write('<html><head><title>Print Invoice</title>');
-      printWindow.document.write('<style>');
-      printWindow.document.write(`
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        table, th, td { border: 1px solid #ddd; }
-        th, td { padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .font-bold { font-weight: bold; }
-      `);
-      printWindow.document.write('</style></head><body>');
-      printWindow.document.write(invoiceRef.current.innerHTML);
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    }
+    // Use our enhanced print function
+    generateTransactionReport({
+      companyName: "Vyas Accounting",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "+977 1234567890",
+      companyEmail: "info@vyasaccounting.com",
+      transaction: {
+        ...transaction,
+        items: items
+      },
+      entity: customer,
+      reportTitle: isPurchase ? "Purchase Invoice" : isSale ? "Sales Invoice" : "Payment Receipt"
+    });
   };
   
   const handleDownload = () => {
@@ -136,8 +130,19 @@ const InvoiceView: React.FC<InvoiceProps> = ({
       return;
     }
     
-    // Basic PDF generation - in a real app, you would use a proper PDF library
-    alert('Download functionality would generate a PDF in a real application.');
+    // Use our enhanced PDF export function
+    generateTransactionReport({
+      companyName: "Vyas Accounting",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "+977 1234567890",
+      companyEmail: "info@vyasaccounting.com",
+      transaction: {
+        ...transaction,
+        items: items
+      },
+      entity: customer,
+      reportTitle: isPurchase ? "Purchase Invoice" : isSale ? "Sales Invoice" : "Payment Receipt"
+    });
   };
   
   return (
@@ -216,7 +221,7 @@ const InvoiceView: React.FC<InvoiceProps> = ({
                 <p className="font-bold text-vyc-success">रू {formatAmountWithoutSymbol(Math.abs(transaction.amount))}</p>
               </div>
               <p className="mt-2">Payment for: {transaction.description}</p>
-              <p className="text-muted-foreground">Payment method: Cash</p>
+              <p className="text-muted-foreground">Payment method: {transaction.paymentMethod || "Cash"}</p>
               <p className="mt-2"><span className="font-semibold">In Words:</span> {amountInWords}</p>
             </div>
           )}

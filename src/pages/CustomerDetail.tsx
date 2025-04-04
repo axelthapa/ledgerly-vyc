@@ -30,7 +30,7 @@ import TransactionActionButtons from "@/components/transactions/TransactionActio
 import TransactionForm from "@/components/transactions/TransactionForm";
 import { toast } from "@/components/ui/toast-utils";
 import { getCurrentFiscalYear, formatFiscalYear } from "@/utils/nepali-fiscal-year";
-import { printComponent, exportToPdf, handleFiscalYearTransition } from "@/utils/print-utils";
+import { handleFiscalYearTransition, generateTransactionReport } from "@/utils/print-utils";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 
 // Mock data for customer details

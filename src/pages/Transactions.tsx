@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -18,10 +17,9 @@ import { formatCurrency } from "@/utils/currency";
 import InvoiceView from "@/components/transactions/InvoiceView";
 import { toast } from "@/components/ui/toast-utils";
 import { useNavigate } from "react-router-dom";
+import { generateTransactionReport } from "@/utils/print-utils";
 
-// Combine all mock transactions from customers and suppliers
 const getAllMockTransactions = () => {
-  // This would normally come from a database
   const transactions = [
     { id: "T001", entityId: "CN001", entityName: "John Doe", entityType: "customer", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Sale", description: "Initial Purchase", amount: 5000, balance: 5000 },
     { id: "T002", entityId: "CN001", entityName: "John Doe", entityType: "customer", date: "2081-01-20", nepaliDate: "२०८१-०१-२०", type: "Payment", description: "Partial Payment", amount: -2000, balance: 3000 },
@@ -48,20 +46,16 @@ const Transactions = () => {
   
   const allTransactions = getAllMockTransactions();
   
-  // Filter transactions based on search term and filters
   const filteredTransactions = allTransactions.filter(transaction => {
-    // Apply search filter
     const matchesSearch = 
       transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Apply type filter
     const matchesType = 
       typeFilter === "all" || 
       transaction.type.toLowerCase() === typeFilter.toLowerCase();
     
-    // Apply date filters if set
     let matchesDateFilter = true;
     if (dateFilter.from) {
       matchesDateFilter = matchesDateFilter && transaction.date >= dateFilter.from;
@@ -90,15 +84,53 @@ const Transactions = () => {
     navigate(`/${entityType}s/${entityId}`);
   };
   
-  // Handle print and download
   const handlePrint = () => {
-    // Use browser's print functionality
-    window.print();
+    if (selectedTransaction) {
+      generateTransactionReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        transaction: selectedTransaction,
+        entity: selectedTransaction.customer,
+        reportTitle: `${selectedTransaction.type} Details`
+      });
+    } else {
+      generateTransactionReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        transaction: {
+          id: "TRANSACTIONS",
+          date: new Date().toISOString().split('T')[0],
+          nepaliDate: "२०८१-०४-०१",
+          type: "Transactions",
+          description: "All Transactions",
+          amount: 0,
+          balance: 0
+        },
+        entity: {
+          id: "ALL",
+          name: "All Entities",
+          address: "Various",
+          phone: "Multiple"
+        },
+        dateRange: dateFilter.from && dateFilter.to ? {
+          from: dateFilter.from,
+          to: dateFilter.to
+        } : undefined,
+        transactions: filteredTransactions,
+        showTransactions: true,
+        reportTitle: "Transactions Report"
+      });
+    }
+    
     toast.success("Printing initiated.");
   };
   
   const handleDownload = () => {
-    // In a real app, this would generate a PDF or CSV
+    handlePrint();
     toast.success("Download initiated.");
   };
   
@@ -279,7 +311,6 @@ const Transactions = () => {
           </CardContent>
         </Card>
         
-        {/* Invoice Dialog */}
         <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
           <DialogContent className="sm:max-w-[800px]">
             <DialogHeader>
