@@ -232,10 +232,10 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
         <p>Report Generated: {currentDate} ({currentNepaliDate}) at {currentTime}</p>
       </div>
 
-      {/* Footer */}
+      {/* Footer with Signatures */}
       <div className="flex justify-between pt-8 mt-8 border-t">
         <div>
-          <p className="font-semibold">Customer Signature</p>
+          <p className="font-semibold">{isPurchase ? "Supplier" : "Customer"} Signature</p>
           <div className="mt-10 border-t border-dashed w-40"></div>
           <p className="text-sm">Date: ________________</p>
         </div>
