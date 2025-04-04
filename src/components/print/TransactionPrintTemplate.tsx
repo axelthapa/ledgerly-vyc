@@ -2,6 +2,7 @@
 import React from "react";
 import { formatCurrency, convertToWords } from "@/utils/currency";
 import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
+import { formatNepaliDateNP } from "@/utils/nepali-date";
 
 interface LineItem {
   id: string;
@@ -65,6 +66,16 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
   // Format amount in words
   const amountInWords = convertToWords(Math.abs(transaction.amount));
   const items = transaction.items || [];
+
+  // Current date and time for the report generation
+  const now = new Date();
+  const currentDate = now.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const currentTime = now.toLocaleTimeString('en-US');
+  const currentNepaliDate = formatNepaliDateNP(now);
   
   return (
     <div className="bg-white p-8 max-w-4xl mx-auto">
@@ -99,7 +110,8 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
         </div>
         <div className="text-right">
           <p><strong>Invoice #:</strong> {transaction.id}</p>
-          <p><strong>Date:</strong> {transaction.nepaliDate}</p>
+          <p><strong>Date (BS):</strong> {transaction.nepaliDate}</p>
+          <p><strong>Date (AD):</strong> {transaction.date}</p>
           <p><strong>Fiscal Year:</strong> {fiscalYear.year}</p>
           {dateRange && (
             <p><strong>Report Period:</strong> {dateRange.from} - {dateRange.to}</p>
@@ -164,7 +176,8 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border p-2 text-left">Date</th>
+                <th className="border p-2 text-left">Date (BS)</th>
+                <th className="border p-2 text-left">Date (AD)</th>
                 <th className="border p-2 text-left">Reference</th>
                 <th className="border p-2 text-left">Description</th>
                 <th className="border p-2 text-left">Type</th>
@@ -176,6 +189,7 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
               {transactions.map((trx, index) => (
                 <tr key={`${trx.id}-${index}`}>
                   <td className="border p-2">{trx.nepaliDate}</td>
+                  <td className="border p-2">{trx.date}</td>
                   <td className="border p-2">{trx.id}</td>
                   <td className="border p-2">{trx.description}</td>
                   <td className="border p-2">{trx.type}</td>
@@ -195,6 +209,7 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
       {/* Amount in Words */}
       <div className="mb-6 p-3 border rounded">
         <p><strong>Amount in words:</strong> {amountInWords}</p>
+        <p><strong>Amount in figures:</strong> रू {formatCurrency(Math.abs(transaction.amount))}</p>
       </div>
 
       {/* Notes */}
@@ -212,22 +227,30 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
         </div>
       )}
 
+      {/* Report Generation Time */}
+      <div className="mb-6 text-sm text-gray-500">
+        <p>Report Generated: {currentDate} ({currentNepaliDate}) at {currentTime}</p>
+      </div>
+
       {/* Footer */}
       <div className="flex justify-between pt-8 mt-8 border-t">
         <div>
           <p className="font-semibold">Customer Signature</p>
           <div className="mt-10 border-t border-dashed w-40"></div>
+          <p className="text-sm">Date: ________________</p>
         </div>
         <div className="text-right">
           <p className="font-semibold">For {companyName}</p>
           <div className="mt-10 border-t border-dashed w-40 ml-auto"></div>
           <p className="text-sm">Authorized Signature</p>
+          <p className="text-sm">Date: ________________</p>
         </div>
       </div>
 
       {/* Thank You Message */}
       <div className="text-center mt-8 pt-4 border-t text-gray-600">
         <p>Thank you for your business!</p>
+        <p className="text-xs mt-2">© {new Date().getFullYear()} {companyName}. All rights reserved.</p>
       </div>
     </div>
   );

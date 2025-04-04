@@ -180,6 +180,7 @@ export const generateTransactionReport = async ({
   entity,
   dateRange,
   transactions,
+  showTransactions = false,
   reportTitle = "Transaction Report"
 }: {
   companyName: string;
@@ -191,6 +192,7 @@ export const generateTransactionReport = async ({
   entity?: any;
   dateRange?: { from: string; to: string };
   transactions?: any[];
+  showTransactions?: boolean;
   reportTitle?: string;
 }) => {
   // Create a container for the report
@@ -204,6 +206,13 @@ export const generateTransactionReport = async ({
   
   // Current fiscal year
   const fiscalYear = getCurrentFiscalYear();
+  const currentDate = new Date();
+  const englishDate = currentDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const currentTime = currentDate.toLocaleTimeString('en-US');
   
   // HTML content for the report
   reportContainer.innerHTML = `
@@ -229,7 +238,8 @@ export const generateTransactionReport = async ({
         </div>
         <div style="text-align: right;">
           ${transaction ? `<p style="margin: 3px 0;"><strong>Invoice #:</strong> ${transaction.id}</p>` : ''}
-          <p style="margin: 3px 0;"><strong>Date:</strong> ${transaction?.nepaliDate || new Date().toLocaleDateString()}</p>
+          <p style="margin: 3px 0;"><strong>Date (BS):</strong> ${transaction?.nepaliDate || new Date().toLocaleDateString()}</p>
+          <p style="margin: 3px 0;"><strong>Date (AD):</strong> ${transaction?.date || englishDate}</p>
           <p style="margin: 3px 0;"><strong>Fiscal Year:</strong> ${fiscalYear.year}</p>
           ${dateRange ? `
           <p style="margin: 3px 0;"><strong>Report Period:</strong> ${dateRange.from} - ${dateRange.to}</p>
@@ -269,13 +279,14 @@ export const generateTransactionReport = async ({
       </div>
       ` : ''}
       
-      ${transactions && transactions.length > 0 ? `
+      ${transactions && transactions.length > 0 && showTransactions ? `
       <div class="transactions-list" style="margin-bottom: 20px;">
         <h3 style="margin-bottom: 10px;">Transaction History</h3>
         <table style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr style="background-color: #f2f2f2;">
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Date</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Date (BS)</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Date (AD)</th>
               <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Reference</th>
               <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
               <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Type</th>
@@ -287,6 +298,7 @@ export const generateTransactionReport = async ({
             ${transactions.map(trx => `
             <tr>
               <td style="border: 1px solid #ddd; padding: 8px;">${trx.nepaliDate}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${trx.date}</td>
               <td style="border: 1px solid #ddd; padding: 8px;">${trx.id}</td>
               <td style="border: 1px solid #ddd; padding: 8px;">${trx.description}</td>
               <td style="border: 1px solid #ddd; padding: 8px;">${trx.type}</td>
@@ -306,6 +318,7 @@ export const generateTransactionReport = async ({
       ${transaction ? `
       <div class="payment-summary" style="margin-bottom: 15px; padding: 12px; border: 1px solid #ddd; border-radius: 4px;">
         <p style="margin: 5px 0;"><strong>Amount in words:</strong> ${amountInWords(Math.abs(transaction.amount))}</p>
+        <p style="margin: 5px 0;"><strong>Amount in figures:</strong> रू ${formatNumber(Math.abs(transaction.amount))}</p>
         ${transaction.type === "Payment" ? `
         <p style="margin: 5px 0;">Payment method: ${transaction.paymentMethod || "Cash"}</p>
         ` : ''}
@@ -319,24 +332,33 @@ export const generateTransactionReport = async ({
       
       ${entity && entity.balance ? `
       <div class="balance-summary" style="margin-top: 20px; text-align: right;">
-        <p style="margin: 5px 0;"><strong>Closing Balance:</strong> रू ${formatNumber(Math.abs(entity.balance))} ${entity.type}</p>
+        <p style="margin: 5px 0;"><strong>Closing Balance:</strong> रू ${formatNumber(Math.abs(entity.balance))} ${
+          entity.balance < 0 ? 'DR' : 'CR'
+        }</p>
       </div>
       ` : ''}
+      
+      <div class="report-generation" style="margin-top: 15px; font-size: 12px; color: #666; text-align: right;">
+        <p>Report generated on: ${englishDate} at ${currentTime}</p>
+      </div>
       
       <div class="signatures" style="display: flex; justify-content: space-between; margin-top: 50px;">
         <div>
           <p style="margin-bottom: 30px;"><strong>${entity ? "Customer" : "Prepared by"} Signature</strong></p>
           <div style="border-top: 1px dashed #000; width: 200px;"></div>
+          <p style="font-size: 12px; margin-top: 5px;">Date: ________________</p>
         </div>
         <div style="text-align: right;">
           <p style="margin-bottom: 30px;"><strong>For ${companyName}</strong></p>
           <div style="border-top: 1px dashed #000; width: 200px; margin-left: auto;"></div>
           <p style="font-size: 12px; margin-top: 5px;">Authorized Signature</p>
+          <p style="font-size: 12px; margin-top: 5px;">Date: ________________</p>
         </div>
       </div>
       
       <div class="thank-you" style="text-align: center; margin-top: 30px; color: #555;">
         <p>Thank you for your business!</p>
+        <p style="font-size: 12px; margin-top: 5px;">© ${new Date().getFullYear()} ${companyName}. All rights reserved.</p>
       </div>
     </div>
   `;

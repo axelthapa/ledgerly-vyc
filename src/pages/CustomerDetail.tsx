@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -30,10 +29,9 @@ import TransactionActionButtons from "@/components/transactions/TransactionActio
 import TransactionForm from "@/components/transactions/TransactionForm";
 import { toast } from "@/components/ui/toast-utils";
 import { getCurrentFiscalYear, formatFiscalYear } from "@/utils/nepali-fiscal-year";
-import { handleFiscalYearTransition, generateTransactionReport } from "@/utils/print-utils";
+import { handleFiscalYearTransition, generateTransactionReport, printComponent, exportToPdf } from "@/utils/print-utils";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 
-// Mock data for customer details
 const mockCustomersData = {
   "CN001": { 
     id: "CN001", 
@@ -82,7 +80,6 @@ const mockCustomersData = {
   },
 };
 
-// Mock transaction data
 const mockTransactions = {
   "CN001": [
     { id: "T001", date: "2081-01-15", nepaliDate: "२०८१-०१-१५", type: "Purchase", description: "Initial Purchase", amount: 5000, balance: 5000, fiscalYear: "2080/2081" },
@@ -115,7 +112,6 @@ const mockTransactions = {
   ]
 };
 
-// Mock data for previous fiscal year
 const mockPreviousTransactions = {
   "CN001": [
     { id: "PT001", date: "2080-01-10", nepaliDate: "२०८०-०१-१०", type: "Purchase", description: "Initial Purchase", amount: 12000, balance: 12000, fiscalYear: "2079/2080" },
@@ -144,12 +140,10 @@ const CustomerDetail = () => {
   
   const currentFiscalYear = getCurrentFiscalYear().year;
   
-  // Get transactions based on fiscal year selection
   const transactions = showPreviousFiscalYear 
     ? previousTransactions 
     : currentTransactions;
   
-  // Process transactions for fiscal year handling
   const processedTransactions = handleFiscalYearTransition(
     [...currentTransactions, ...previousTransactions], 
     currentFiscalYear
@@ -165,7 +159,6 @@ const CustomerDetail = () => {
   };
 
   const handleTransactionClick = (transaction) => {
-    // Handle opening balance entries by switching to previous fiscal year
     if (transaction.isOpening) {
       setShowPreviousFiscalYear(true);
       return;
@@ -197,7 +190,6 @@ const CustomerDetail = () => {
     setPrintViewOpen(true);
     setTimeout(() => {
       exportToPdf("customer-print-view", `Customer_${customerId}_Report.pdf`);
-      // Don't auto-close the print view to allow user to see it
     }, 500);
   };
   
@@ -420,7 +412,6 @@ const CustomerDetail = () => {
                 } : undefined}
               />
               
-              {/* Add transaction list to the print view */}
               <div className="mt-8 px-8">
                 <h3 className="font-bold mb-4">Transaction History</h3>
                 <table className="w-full border-collapse">
