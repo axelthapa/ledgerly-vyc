@@ -29,6 +29,8 @@ import { formatCurrency } from "@/utils/currency";
 import { toast } from "@/components/ui/toast-utils";
 import { generateTransactionReport } from "@/utils/print-utils";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
+import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
+import { formatNepaliDateNP } from "@/utils/nepali-date";
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("sales");
@@ -39,15 +41,30 @@ const Reports = () => {
     const summaryData = generateSummaryData(activeTab);
     const reportData = generateReportData(activeTab);
 
+    // Get current date and time
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+
     // Create a mock transaction for export
     const mockTransaction = {
       id: `RPT-${Date.now()}`,
-      date: new Date().toLocaleDateString(),
-      nepaliDate: "२०८१-०३-१५",
+      date: currentDate,
+      nepaliDate: currentNepaliDate,
       type: activeTab.charAt(0).toUpperCase() + activeTab.slice(1),
       description: `${summaryData.title} from ${dateRange.from || 'All time'} to ${dateRange.to || 'Present'}`,
       amount: summaryData.total,
       balance: summaryData.total,
+      currentDate,
+      currentTime,
+      currentNepaliDate,
+      fiscalYear: fiscalYear.year,
       items: reportData.map(item => ({
         id: item.id,
         name: item.description,
@@ -189,6 +206,17 @@ const Reports = () => {
   const summaryData = generateSummaryData(activeTab);
   const reportData = generateReportData(activeTab);
 
+  // Get current date and time for print template
+  const now = new Date();
+  const currentDate = now.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const currentTime = now.toLocaleTimeString('en-US');
+  const currentNepaliDate = formatNepaliDateNP(now);
+  const fiscalYear = getCurrentFiscalYear();
+
   // Create data for print template
   const printData = {
     companyName: "Your Company",
@@ -198,12 +226,16 @@ const Reports = () => {
     companyPan: "123456789",
     transaction: {
       id: `RPT-${activeTab.toUpperCase()}`,
-      date: new Date().toLocaleDateString(),
-      nepaliDate: "२०८१-०३-१५",
+      date: currentDate,
+      nepaliDate: currentNepaliDate,
       type: activeTab.charAt(0).toUpperCase() + activeTab.slice(1),
       description: `${summaryData.title} from ${dateRange.from || 'All time'} to ${dateRange.to || 'Present'}`,
       amount: summaryData.total,
-      balance: summaryData.total
+      balance: summaryData.total,
+      currentDate,
+      currentTime,
+      currentNepaliDate,
+      fiscalYear: fiscalYear.year
     },
     entity: {
       id: "REPORT",
@@ -232,27 +264,43 @@ const Reports = () => {
           </div>
           
           <div className="flex gap-2 items-center">
-            <Button variant="outline" onClick={handleExport}>
-              <FileDown className="mr-2 h-4 w-4" /> Export
+            <Button 
+              variant="outline" 
+              onClick={handleExport}
+              className="flex items-center gap-1 hover:bg-slate-100 transition-colors"
+            >
+              <FileDown className="h-4 w-4" /> Export
             </Button>
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" /> Print
+            <Button 
+              variant="outline" 
+              onClick={handlePrint}
+              className="flex items-center gap-1 hover:bg-slate-100 transition-colors"
+            >
+              <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
         </div>
         
         <Tabs defaultValue="sales" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-4 mb-6">
-            <TabsTrigger value="sales">Sales Report</TabsTrigger>
-            <TabsTrigger value="purchases">Purchases Report</TabsTrigger>
-            <TabsTrigger value="payments">Payments Report</TabsTrigger>
-            <TabsTrigger value="transactions">All Transactions</TabsTrigger>
+          <TabsList className="grid grid-cols-4 mb-6 bg-slate-100 p-1 rounded-md">
+            <TabsTrigger value="sales" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Sales Report
+            </TabsTrigger>
+            <TabsTrigger value="purchases" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Purchases Report
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Payments Report
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              All Transactions
+            </TabsTrigger>
           </TabsList>
           
           {["sales", "purchases", "payments", "transactions"].map((tab) => (
             <TabsContent key={tab} value={tab} className="space-y-6">
               {/* Report Filters */}
-              <Card>
+              <Card className="border-slate-200 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Report Filters</CardTitle>
                 </CardHeader>
@@ -286,7 +334,7 @@ const Reports = () => {
                         className="pl-10"
                       />
                     </div>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </div>
@@ -295,7 +343,7 @@ const Reports = () => {
               
               {/* Report Summary */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className="border-slate-200 shadow-sm hover:shadow transition-shadow">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Total {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -307,7 +355,7 @@ const Reports = () => {
                   </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="border-slate-200 shadow-sm hover:shadow transition-shadow">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Number of {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -319,7 +367,7 @@ const Reports = () => {
                   </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="border-slate-200 shadow-sm hover:shadow transition-shadow">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Average Value
@@ -331,7 +379,7 @@ const Reports = () => {
                   </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="border-slate-200 shadow-sm hover:shadow transition-shadow">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Top {tab === "sales" ? "Customer" : tab === "purchases" ? "Supplier" : "Entity"}
@@ -354,7 +402,7 @@ const Reports = () => {
               </div>
               
               {/* Report Table */}
-              <Card>
+              <Card className="border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>{summaryData.title} - Report Details</CardTitle>
                 </CardHeader>
@@ -362,7 +410,7 @@ const Reports = () => {
                   <div className="rounded-md border overflow-hidden">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-muted/50">
+                        <TableRow className="bg-slate-50">
                           <TableHead>ID</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Description</TableHead>
@@ -379,7 +427,7 @@ const Reports = () => {
                           </TableRow>
                         ) : (
                           reportData.map((item) => (
-                            <TableRow key={item.id} className="hover:bg-muted/30">
+                            <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
                               <TableCell className="font-mono">{item.id}</TableCell>
                               <TableCell>{item.date}</TableCell>
                               <TableCell>{item.description}</TableCell>
@@ -423,26 +471,28 @@ const Reports = () => {
       </div>
 
       {/* Print-specific styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-only, .print-only * {
+              visibility: visible;
+            }
+            .print-only {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
           }
-          .print-only, .print-only * {
-            visibility: visible;
-          }
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-        }
-      `}</style>
+        `
+      }} />
     </MainLayout>
   );
 };

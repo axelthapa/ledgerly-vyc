@@ -8,6 +8,9 @@ import TransactionForm from "@/components/transactions/TransactionForm";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 import { generateTransactionReport } from "@/utils/print-utils";
 import { toast } from "@/components/ui/toast-utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
+import { formatNepaliDateNP } from "@/utils/nepali-date";
 
 const Purchases = () => {
   const navigate = useNavigate();
@@ -83,17 +86,36 @@ const Purchases = () => {
       return;
     }
     
+    // Get current date and time
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
     generateTransactionReport({
       companyName: "Your Company",
       companyAddress: "Kathmandu, Nepal",
       companyPhone: "01-1234567",
       companyEmail: "info@yourcompany.com",
       companyPan: "123456789",
-      transaction: currentTransaction,
+      transaction: {
+        ...currentTransaction,
+        currentDate,
+        currentTime,
+        currentNepaliDate,
+        fiscalYear: fiscalYear.year
+      },
       entity: supplierData,
       showTransactions: false,
       reportTitle: "Purchase Invoice"
     });
+    
+    toast.success("PDF export successful");
   };
   
   return (
@@ -108,44 +130,50 @@ const Purchases = () => {
           <div className="flex gap-2">
             {transactionFormOpen && supplierData && (
               <>
-                <Button variant="outline" onClick={handleExport}>
-                  <FileDown className="mr-2 h-4 w-4" /> Export
+                <Button variant="outline" onClick={handleExport} className="flex items-center gap-1 hover:bg-slate-100">
+                  <FileDown className="h-4 w-4" /> Export
                 </Button>
-                <Button variant="outline" onClick={handlePrint}>
-                  <Printer className="mr-2 h-4 w-4" /> Print
+                <Button variant="outline" onClick={handlePrint} className="flex items-center gap-1 hover:bg-slate-100">
+                  <Printer className="h-4 w-4" /> Print
                 </Button>
               </>
             )}
-            <Button variant="outline" onClick={() => navigate(-1)}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            <Button variant="outline" onClick={() => navigate(-1)} className="flex items-center gap-1 hover:bg-slate-100">
+              <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           </div>
         </div>
         
         {!transactionFormOpen ? (
-          <div className="p-6 border rounded-md bg-muted/30">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-4">New Purchase Transaction</h2>
-              <p className="text-muted-foreground mb-6">
-                To create a new purchase, you need to select a supplier first.
-              </p>
-              <Button onClick={handleNewPurchase} className="bg-vyc-primary hover:bg-vyc-primary-dark">
-                <Plus className="mr-2 h-4 w-4" /> Select Supplier
-              </Button>
-            </div>
-            
-            <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Recent Purchases</h3>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={() => navigate("/transactions?type=purchase")} variant="outline">
-                  View All Purchases
-                </Button>
-                <Button onClick={() => navigate("/suppliers")} variant="outline">
-                  Go to Suppliers
+          <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold mb-4">New Purchase Transaction</h2>
+                <p className="text-muted-foreground mb-6">
+                  To create a new purchase, you need to select a supplier first.
+                </p>
+                <Button onClick={handleNewPurchase} className="bg-vyc-primary hover:bg-vyc-primary-dark transition-colors">
+                  <Plus className="mr-2 h-4 w-4" /> Select Supplier
                 </Button>
               </div>
-            </div>
-          </div>
+              
+              <div className="mt-8 border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Recent Purchases</h3>
+                <div className="flex gap-4 justify-center">
+                  <Button onClick={() => navigate("/transactions?type=purchase")} 
+                    variant="outline" 
+                    className="border-slate-200 hover:bg-slate-50 transition-colors">
+                    View All Purchases
+                  </Button>
+                  <Button onClick={() => navigate("/suppliers")} 
+                    variant="outline"
+                    className="border-slate-200 hover:bg-slate-50 transition-colors">
+                    Go to Suppliers
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <div>
             {supplierData && (
@@ -155,7 +183,6 @@ const Purchases = () => {
                   onOpenChange={setTransactionFormOpen}
                   type="purchase"
                   entity={supplierData}
-                  onTransactionChange={setCurrentTransaction}
                 />
               </div>
             )}
@@ -180,26 +207,28 @@ const Purchases = () => {
       </div>
       
       {/* Print-specific styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-only, .print-only * {
+              visibility: visible;
+            }
+            .print-only {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
           }
-          .print-only, .print-only * {
-            visibility: visible;
-          }
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-        }
-      `}</style>
+        `
+      }} />
     </MainLayout>
   );
 };

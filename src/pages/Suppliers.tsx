@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -27,6 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
+import { formatNepaliDateNP } from "@/utils/nepali-date";
 
 // Mock suppliers data
 const mockSuppliers = [
@@ -163,15 +167,30 @@ const Suppliers = () => {
   };
 
   const handleExport = () => {
+    // Get current date and time
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
     // Mock transaction data for supplier list report
     const mockTransaction = {
       id: `SUP-LIST-${Date.now()}`,
-      date: new Date().toLocaleDateString(),
-      nepaliDate: "२०८१-०३-१५",
+      date: currentDate,
+      nepaliDate: currentNepaliDate,
       type: "Report",
       description: "Suppliers List Report",
       amount: getTotalBalance().amount,
       balance: getTotalBalance().amount,
+      currentDate,
+      currentTime,
+      currentNepaliDate,
+      fiscalYear: fiscalYear.year,
     };
 
     // Generate report
@@ -218,14 +237,25 @@ const Suppliers = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExport}>
-              <FileDown className="mr-2 h-4 w-4" /> Export
+            <Button 
+              variant="outline" 
+              onClick={handleExport}
+              className="flex items-center gap-1 hover:bg-slate-100 transition-colors"
+            >
+              <FileDown className="h-4 w-4" /> Export
             </Button>
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" /> Print
+            <Button 
+              variant="outline" 
+              onClick={handlePrint}
+              className="flex items-center gap-1 hover:bg-slate-100 transition-colors"
+            >
+              <Printer className="h-4 w-4" /> Print
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <Button className="bg-vyc-primary hover:bg-vyc-primary-dark" onClick={() => setDialogOpen(true)}>
+              <Button 
+                className="bg-vyc-primary hover:bg-vyc-primary-dark transition-colors"
+                onClick={() => setDialogOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Supplier
               </Button>
@@ -369,10 +399,10 @@ const Suppliers = () => {
           </div>
         </div>
         
-        <div className="rounded-md border">
+        <div className="rounded-md border border-slate-200 overflow-hidden shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow className="bg-slate-50">
                 <TableHead>Supplier ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Address</TableHead>
@@ -391,8 +421,8 @@ const Suppliers = () => {
                 </TableRow>
               ) : (
                 filteredSuppliers.map((supplier) => (
-                  <TableRow key={supplier.id} className="cursor-pointer hover:bg-gray-50" onDoubleClick={() => handleViewSupplier(supplier.id)}>
-                    <TableCell>{supplier.id}</TableCell>
+                  <TableRow key={supplier.id} className="cursor-pointer hover:bg-slate-50 transition-colors" onDoubleClick={() => handleViewSupplier(supplier.id)}>
+                    <TableCell className="font-mono">{supplier.id}</TableCell>
                     <TableCell className="font-medium">{supplier.name}</TableCell>
                     <TableCell>{supplier.address}</TableCell>
                     <TableCell>{supplier.phone}</TableCell>
@@ -404,14 +434,14 @@ const Suppliers = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleViewSupplier(supplier.id)}>
-                          <Eye className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+                          <Eye className="h-4 w-4" onClick={() => handleViewSupplier(supplier.id)} />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(supplier.id)}>
-                          <Edit className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+                          <Edit className="h-4 w-4" onClick={() => handleEdit(supplier.id)} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-vyc-error" onClick={() => handleDeleteClick(supplier.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="text-vyc-error rounded-full hover:bg-red-50">
+                          <Trash2 className="h-4 w-4" onClick={() => handleDeleteClick(supplier.id)} />
                         </Button>
                       </div>
                     </TableCell>
@@ -422,22 +452,24 @@ const Suppliers = () => {
           </Table>
         </div>
         
-        <div className="bg-muted/30 p-4 rounded-md">
-          <div className="flex justify-between">
-            <div>
-              <h3 className="font-medium">Summary</h3>
-              <p className="text-sm text-muted-foreground">Total Suppliers: {mockSuppliers.length}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm">Total Balance</div>
-              <div className="text-lg font-bold">
-                <span className={totalBalance.type === "DR" ? "text-vyc-error" : "text-vyc-success"}>
-                  रू {formatCurrency(totalBalance.amount)} {totalBalance.type}
-                </span>
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex justify-between">
+              <div>
+                <h3 className="font-medium">Summary</h3>
+                <p className="text-sm text-muted-foreground">Total Suppliers: {mockSuppliers.length}</p>
+              </div>
+              <div className="text-right">
+                <div className="text-sm">Total Balance</div>
+                <div className="text-lg font-bold">
+                  <span className={totalBalance.type === "DR" ? "text-vyc-error" : "text-vyc-success"}>
+                    रू {formatCurrency(totalBalance.amount)} {totalBalance.type}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         <div className={`print-only ${printVisible ? '' : 'hidden'}`}>
           <TransactionPrintTemplate
@@ -453,7 +485,15 @@ const Suppliers = () => {
               type: "Report",
               description: "Suppliers List",
               amount: totalBalance.amount,
-              balance: totalBalance.amount
+              balance: totalBalance.amount,
+              currentDate: new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              }),
+              currentTime: new Date().toLocaleTimeString('en-US'),
+              currentNepaliDate: formatNepaliDateNP(new Date()),
+              fiscalYear: getCurrentFiscalYear().year
             }}
             entity={{
               id: "SUPPLIERS",
@@ -476,26 +516,28 @@ const Suppliers = () => {
         </div>
       </div>
       
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-only, .print-only * {
+              visibility: visible;
+            }
+            .print-only {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
           }
-          .print-only, .print-only * {
-            visibility: visible;
-          }
-          .print-only {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-        }
-      `}</style>
+        `
+      }} />
     </MainLayout>
   );
 };

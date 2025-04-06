@@ -28,6 +28,10 @@ interface TransactionPrintProps {
     balance: number;
     paymentMethod?: string;
     items?: LineItem[];
+    currentDate?: string;
+    currentTime?: string;
+    currentNepaliDate?: string;
+    fiscalYear?: string;
   };
   entity: {
     id: string;
@@ -57,11 +61,12 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
   transactions = [],
   showTransactions = false
 }) => {
-  const fiscalYear = getCurrentFiscalYear();
+  const fiscalYear = transaction.fiscalYear || getCurrentFiscalYear().year;
   const isOpeningBalance = transaction.description?.toLowerCase().includes("opening balance");
   const isPurchase = transaction.type === "Purchase";
   const isSale = transaction.type === "Sale";
   const isPayment = transaction.type === "Payment";
+  const isReport = transaction.type === "Report";
 
   // Format amount in words
   const amountInWords = convertToWords(Math.abs(transaction.amount));
@@ -69,13 +74,13 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
 
   // Current date and time for the report generation
   const now = new Date();
-  const currentDate = now.toLocaleDateString('en-US', { 
+  const currentDate = transaction.currentDate || now.toLocaleDateString('en-US', { 
     year: 'numeric', 
     month: 'long', 
     day: 'numeric' 
   });
-  const currentTime = now.toLocaleTimeString('en-US');
-  const currentNepaliDate = formatNepaliDateNP(now);
+  const currentTime = transaction.currentTime || now.toLocaleTimeString('en-US');
+  const currentNepaliDate = transaction.currentNepaliDate || formatNepaliDateNP(now);
   
   return (
     <div className="bg-white p-8 max-w-4xl mx-auto">
@@ -90,6 +95,7 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
             {isPurchase ? "PURCHASE INVOICE" : 
              isSale ? "SALES INVOICE" : 
              isPayment ? "PAYMENT RECEIPT" :
+             isReport ? transaction.description.toUpperCase() :
              "TRANSACTION REPORT"}
           </h2>
         </div>
@@ -109,10 +115,10 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
           {entity.pan && <p>PAN: {entity.pan}</p>}
         </div>
         <div className="text-right">
-          <p><strong>Invoice #:</strong> {transaction.id}</p>
+          <p><strong>Reference #:</strong> {transaction.id}</p>
           <p><strong>Date (BS):</strong> {transaction.nepaliDate}</p>
           <p><strong>Date (AD):</strong> {transaction.date}</p>
-          <p><strong>Fiscal Year:</strong> {fiscalYear.year}</p>
+          <p><strong>Fiscal Year:</strong> {fiscalYear}</p>
           {dateRange && (
             <p><strong>Report Period:</strong> {dateRange.from} - {dateRange.to}</p>
           )}
@@ -122,7 +128,7 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
       {/* Opening Balance Note */}
       {isOpeningBalance && (
         <div className="bg-gray-100 p-4 mb-6 rounded">
-          <p className="font-semibold">Opening Balance for Fiscal Year {fiscalYear.year}</p>
+          <p className="font-semibold">Opening Balance for Fiscal Year {fiscalYear}</p>
           <p className="text-sm">Click for transactions from previous fiscal year</p>
         </div>
       )}
@@ -132,7 +138,7 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
         <div className="mb-6">
           <table className="w-full border-collapse mb-4">
             <thead>
-              <tr className="bg-gray-100">
+              <tr className="bg-slate-100">
                 <th className="border p-2 text-left">Item</th>
                 <th className="border p-2 text-center">Quantity</th>
                 <th className="border p-2 text-right">Rate</th>
@@ -159,7 +165,7 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
 
       {/* Payment Details (if it's a payment) */}
       {isPayment && (
-        <div className="mb-6 border rounded p-4">
+        <div className="mb-6 border rounded p-4 bg-slate-50">
           <div className="flex justify-between">
             <h3 className="font-semibold">Payment Details</h3>
             <p className="font-bold">रू {formatCurrency(Math.abs(transaction.amount))}</p>
@@ -175,9 +181,8 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
           <h3 className="font-bold mb-2">Transaction History</h3>
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100">
+              <tr className="bg-slate-100">
                 <th className="border p-2 text-left">Date (BS)</th>
-                <th className="border p-2 text-left">Date (AD)</th>
                 <th className="border p-2 text-left">Reference</th>
                 <th className="border p-2 text-left">Description</th>
                 <th className="border p-2 text-left">Type</th>
@@ -189,7 +194,6 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
               {transactions.map((trx, index) => (
                 <tr key={`${trx.id}-${index}`}>
                   <td className="border p-2">{trx.nepaliDate}</td>
-                  <td className="border p-2">{trx.date}</td>
                   <td className="border p-2">{trx.id}</td>
                   <td className="border p-2">{trx.description}</td>
                   <td className="border p-2">{trx.type}</td>
@@ -207,10 +211,12 @@ const TransactionPrintTemplate: React.FC<TransactionPrintProps> = ({
       )}
 
       {/* Amount in Words */}
-      <div className="mb-6 p-3 border rounded">
-        <p><strong>Amount in words:</strong> {amountInWords}</p>
-        <p><strong>Amount in figures:</strong> रू {formatCurrency(Math.abs(transaction.amount))}</p>
-      </div>
+      {!isReport && (
+        <div className="mb-6 p-3 border rounded bg-slate-50">
+          <p><strong>Amount in words:</strong> {amountInWords}</p>
+          <p><strong>Amount in figures:</strong> रू {formatCurrency(Math.abs(transaction.amount))}</p>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="mb-10">
