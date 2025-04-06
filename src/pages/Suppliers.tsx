@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -13,11 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Edit, Trash2, Eye, Printer, FileDown } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Printer, FileDown, Mail } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
 import { toast } from "@/components/ui/toast-utils";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
-import { generateTransactionReport } from "@/utils/print-utils";
+import { generateTransactionReport, emailReport } from "@/utils/print-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +31,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
 import { formatNepaliDateNP } from "@/utils/nepali-date";
 
-// Mock suppliers data
 const mockSuppliers = [
   { id: "SP001", name: "Tech Solutions Ltd", address: "Kathmandu, Nepal", phone: "9801234111", pan: "987650001", balance: 35000, type: "DR" },
   { id: "SP002", name: "Office Supplies Co", address: "Lalitpur, Nepal", phone: "9807654222", pan: "987650002", balance: -8000, type: "CR" },
@@ -158,12 +156,51 @@ const Suppliers = () => {
   };
   
   const handlePrint = () => {
-    setPrintVisible(true);
-    setTimeout(() => {
-      window.print();
-      setPrintVisible(false);
-      toast.success("Printing initiated.");
-    }, 100);
+    generateTransactionReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: {
+        id: `SUP-LIST-${Date.now()}`,
+        date: new Date().toLocaleDateString(),
+        nepaliDate: formatNepaliDateNP(new Date()),
+        type: "Report",
+        description: "Suppliers List Report",
+        amount: getTotalBalance().amount,
+        balance: getTotalBalance().amount,
+        currentDate: new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        currentTime: new Date().toLocaleTimeString('en-US'),
+        currentNepaliDate: formatNepaliDateNP(new Date()),
+        fiscalYear: getCurrentFiscalYear().year,
+      },
+      entity: {
+        id: "SUPPLIERS",
+        name: "Suppliers List",
+        address: "All Suppliers",
+        phone: "",
+        type: "Report"
+      },
+      transactions: mockSuppliers.map(supplier => ({
+        id: supplier.id,
+        date: new Date().toLocaleDateString(),
+        nepaliDate: "२०८१-०३-१५",
+        type: "Supplier",
+        description: supplier.name,
+        amount: supplier.balance,
+        balance: supplier.balance,
+      })),
+      showTransactions: true,
+      reportTitle: "Suppliers List",
+      previewOnly: true
+    });
+
+    toast.success("Print preview opened in new window");
   };
 
   const handleExport = () => {
@@ -224,6 +261,62 @@ const Suppliers = () => {
     toast.success("Report exported successfully!");
   };
   
+  const handleEmailReport = () => {
+    // Get current date and time
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
+    // Mock transaction data for supplier list report
+    const mockTransaction = {
+      id: `SUP-LIST-${Date.now()}`,
+      date: currentDate,
+      nepaliDate: currentNepaliDate,
+      type: "Report",
+      description: "Suppliers List Report",
+      amount: getTotalBalance().amount,
+      balance: getTotalBalance().amount,
+      currentDate,
+      currentTime,
+      currentNepaliDate,
+      fiscalYear: fiscalYear.year,
+    };
+
+    // First export the PDF, then open email client
+    emailReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: mockTransaction,
+      entity: {
+        id: "SUPPLIERS",
+        name: "Suppliers List",
+        address: "All Suppliers",
+        phone: "",
+        type: "Report"
+      },
+      transactions: mockSuppliers.map(supplier => ({
+        id: supplier.id,
+        date: new Date().toLocaleDateString(),
+        nepaliDate: "२०८१-०३-१५",
+        type: "Supplier",
+        description: supplier.name,
+        amount: supplier.balance,
+        balance: supplier.balance,
+      })),
+      showTransactions: true,
+      reportTitle: "Suppliers List"
+    });
+  };
+  
   const totalBalance = getTotalBalance();
   
   return (
@@ -237,6 +330,13 @@ const Suppliers = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleEmailReport}
+              className="flex items-center gap-1 hover:bg-slate-100 transition-colors"
+            >
+              <Mail className="h-4 w-4" /> Email
+            </Button>
             <Button 
               variant="outline" 
               onClick={handleExport}

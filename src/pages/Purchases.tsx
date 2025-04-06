@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Printer, FileDown } from "lucide-react";
+import { ArrowLeft, Plus, Printer, FileDown, Mail } from "lucide-react";
 import TransactionForm from "@/components/transactions/TransactionForm";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
-import { generateTransactionReport } from "@/utils/print-utils";
+import { generateTransactionReport, emailReport } from "@/utils/print-utils";
 import { toast } from "@/components/ui/toast-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
@@ -20,13 +19,11 @@ const Purchases = () => {
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [printVisible, setPrintVisible] = useState(false);
   
-  // Parse query parameters to check if we have a supplierId
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const supplierId = params.get("supplierId");
     
     if (supplierId) {
-      // Mock data lookup - in a real app, this would be a database call
       const mockSupplierData = {
         "SP001": { 
           id: "SP001", 
@@ -52,7 +49,6 @@ const Purchases = () => {
         setSupplierData(mockSupplierData[supplierId]);
         setTransactionFormOpen(true);
         
-        // Create a mock transaction for this supplier
         setCurrentTransaction({
           id: `PUR-${Date.now()}`,
           date: new Date().toLocaleDateString(),
@@ -77,7 +73,6 @@ const Purchases = () => {
       return;
     }
     
-    // Get current date and time
     const now = new Date();
     const currentDate = now.toLocaleDateString('en-US', { 
       year: 'numeric', 
@@ -88,17 +83,34 @@ const Purchases = () => {
     const currentNepaliDate = formatNepaliDateNP(now);
     const fiscalYear = getCurrentFiscalYear();
     
-    // First set the print view visible
-    setPrintVisible(true);
+    const mockItems = currentTransaction.items && currentTransaction.items.length > 0 
+      ? currentTransaction.items 
+      : [
+          { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+          { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+        ];
     
-    // Use a short timeout to ensure the DOM is updated
-    setTimeout(() => {
-      // Print the document
-      window.print();
-      // Hide the print view after printing
-      setPrintVisible(false);
-      toast.success("Printing initiated");
-    }, 100);
+    generateTransactionReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: {
+        ...currentTransaction,
+        currentDate,
+        currentTime,
+        currentNepaliDate,
+        fiscalYear: fiscalYear.year,
+        items: mockItems
+      },
+      entity: supplierData,
+      showTransactions: false,
+      reportTitle: "Purchase Invoice",
+      previewOnly: true
+    });
+    
+    toast.success("Print preview opened in new window");
   };
 
   const handleExport = () => {
@@ -107,7 +119,6 @@ const Purchases = () => {
       return;
     }
     
-    // Get current date and time
     const now = new Date();
     const currentDate = now.toLocaleDateString('en-US', { 
       year: 'numeric', 
@@ -118,7 +129,6 @@ const Purchases = () => {
     const currentNepaliDate = formatNepaliDateNP(now);
     const fiscalYear = getCurrentFiscalYear();
     
-    // Generate mock items if none exist
     const mockItems = currentTransaction.items && currentTransaction.items.length > 0 
       ? currentTransaction.items 
       : [
@@ -126,7 +136,6 @@ const Purchases = () => {
           { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
         ];
     
-    // Generate the transaction report
     generateTransactionReport({
       companyName: "Your Company",
       companyAddress: "Kathmandu, Nepal",
@@ -148,6 +157,50 @@ const Purchases = () => {
     
     toast.success("PDF export successful");
   };
+
+  const handleEmailReport = () => {
+    if (!supplierData || !currentTransaction) {
+      toast.error("No transaction data available to email");
+      return;
+    }
+    
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
+    const mockItems = currentTransaction.items && currentTransaction.items.length > 0 
+      ? currentTransaction.items 
+      : [
+          { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+          { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+        ];
+    
+    emailReport({
+      companyName: "Your Company",
+      companyAddress: "Kathmandu, Nepal",
+      companyPhone: "01-1234567",
+      companyEmail: "info@yourcompany.com",
+      companyPan: "123456789",
+      transaction: {
+        ...currentTransaction,
+        currentDate,
+        currentTime,
+        currentNepaliDate,
+        fiscalYear: fiscalYear.year,
+        items: mockItems
+      },
+      entity: supplierData,
+      showTransactions: false,
+      reportTitle: "Purchase Invoice",
+      recipient: supplierData.email
+    });
+  };
   
   return (
     <MainLayout>
@@ -161,6 +214,9 @@ const Purchases = () => {
           <div className="flex gap-2">
             {transactionFormOpen && supplierData && (
               <>
+                <Button variant="outline" onClick={handleEmailReport} className="flex items-center gap-1 hover:bg-slate-100">
+                  <Mail className="h-4 w-4" /> Email
+                </Button>
                 <Button variant="outline" onClick={handleExport} className="flex items-center gap-1 hover:bg-slate-100">
                   <FileDown className="h-4 w-4" /> Export
                 </Button>
@@ -220,7 +276,6 @@ const Purchases = () => {
           </div>
         )}
         
-        {/* Print Template (hidden by default) */}
         {supplierData && currentTransaction && (
           <div className={`print-only ${printVisible ? '' : 'hidden'}`}>
             <TransactionPrintTemplate
@@ -253,7 +308,6 @@ const Purchases = () => {
         )}
       </div>
       
-      {/* Print-specific styles */}
       <style dangerouslySetInnerHTML={{
         __html: `
           @media print {

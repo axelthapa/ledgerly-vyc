@@ -19,7 +19,8 @@ import {
   RefreshCw, 
   Printer, 
   FileDown,
-  X
+  X,
+  Mail
 } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
 import { formatNepaliDate, formatNepaliDateNP } from "@/utils/nepali-date";
@@ -29,7 +30,7 @@ import TransactionActionButtons from "@/components/transactions/TransactionActio
 import TransactionForm from "@/components/transactions/TransactionForm";
 import { toast } from "@/components/ui/toast-utils";
 import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
-import { generateTransactionReport } from "@/utils/print-utils";
+import { generateTransactionReport, emailReport } from "@/utils/print-utils";
 import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 
 const mockSuppliersData = {
@@ -180,7 +181,8 @@ const SupplierDetail = () => {
         },
         entity: supplier,
         showTransactions: false,
-        reportTitle: selectedTransaction.type === "Purchase" ? "Purchase Invoice" : "Payment Receipt"
+        reportTitle: selectedTransaction.type === "Purchase" ? "Purchase Invoice" : "Payment Receipt",
+        previewOnly: true
       });
     } else {
       generateTransactionReport({
@@ -209,11 +211,12 @@ const SupplierDetail = () => {
         } : undefined,
         transactions: filteredTransactions,
         showTransactions: true,
-        reportTitle: "Supplier Statement"
+        reportTitle: "Supplier Statement",
+        previewOnly: true
       });
     }
     
-    toast.success("Printing initiated");
+    toast.success("Print preview opened in new window");
   };
   
   const handleDownload = () => {
@@ -287,6 +290,78 @@ const SupplierDetail = () => {
     
     toast.success("PDF export successful");
   };
+
+  const handleEmailReport = () => {
+    if (!selectedTransaction && (!supplier || transactions.length === 0)) {
+      toast.error("No transaction data available to email");
+      return;
+    }
+    
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
+    if (selectedTransaction) {
+      emailReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        companyPan: "123456789",
+        transaction: {
+          ...selectedTransaction,
+          currentDate,
+          currentTime,
+          currentNepaliDate,
+          fiscalYear: fiscalYear.year,
+          items: selectedTransaction.type === "Purchase" ? [
+            { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+            { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+          ] : []
+        },
+        entity: supplier,
+        showTransactions: false,
+        reportTitle: selectedTransaction.type === "Purchase" ? "Purchase Invoice" : "Payment Receipt",
+        recipient: supplier.email
+      });
+    } else {
+      emailReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        companyPan: "123456789",
+        transaction: {
+          id: `STMT-${supplier.id}-${Date.now()}`,
+          date: currentDate,
+          nepaliDate: currentNepaliDate,
+          type: "Report",
+          description: `Supplier Statement - ${supplier.name}`,
+          amount: supplier.balance,
+          balance: supplier.balance,
+          currentDate,
+          currentTime,
+          currentNepaliDate,
+          fiscalYear: fiscalYear.year
+        },
+        entity: supplier,
+        dateRange: dateFilter.from && dateFilter.to ? {
+          from: dateFilter.from,
+          to: dateFilter.to
+        } : undefined,
+        transactions: filteredTransactions,
+        showTransactions: true,
+        reportTitle: "Supplier Statement",
+        recipient: supplier.email
+      });
+    }
+  };
   
   if (!supplier) {
     return (
@@ -314,6 +389,14 @@ const SupplierDetail = () => {
           </Button>
           
           <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleEmailReport}
+              className="flex items-center gap-1 hover:bg-slate-100"
+            >
+              <Mail className="h-4 w-4" /> Email
+            </Button>
             <Button 
               variant="outline" 
               size="sm" 

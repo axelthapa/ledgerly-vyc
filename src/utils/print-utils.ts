@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "@/components/ui/toast-utils";
@@ -31,18 +30,27 @@ export const printComponent = (componentId: string) => {
         body { margin: 0; padding: 0; }
         button { display: none; }
       }
+      .print-controls { padding: 20px; display: flex; gap: 10px; justify-content: center; background: #f9f9f9; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+      .btn { padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+      .btn-primary { background-color: #2563eb; color: white; border: none; }
+      .btn-secondary { background-color: #e5e7eb; color: #374151; border: none; }
+      .btn-danger { background-color: #ef4444; color: white; border: none; }
+      .btn:hover { opacity: 0.9; }
     `);
     printWindow.document.write('</style></head><body>');
+    
+    // Add control buttons at the top
+    printWindow.document.write(`
+      <div class="print-controls">
+        <button class="btn btn-primary" id="print-btn" onclick="window.print()">Print Document</button>
+        <button class="btn btn-secondary" id="close-btn" onclick="window.close()">Close Preview</button>
+      </div>
+    `);
+    
     printWindow.document.write(componentContent || '');
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.focus();
-    
-    // Add a small delay to ensure content is loaded
-    setTimeout(() => {
-      printWindow.print();
-      // Don't close automatically so user can cancel if needed
-    }, 500);
   } else {
     toast.error("Failed to open print window");
   }
@@ -93,9 +101,11 @@ export const exportToPdf = async (componentId: string, filename = "export.pdf") 
     
     pdf.save(filename);
     toast.success(`PDF exported successfully with ${pageCount} pages`);
+    return pdf; // Return the PDF object for potential further use
   } catch (error) {
     console.error("Error exporting to PDF:", error);
     toast.error("Failed to export PDF");
+    return null;
   }
 };
 
@@ -181,7 +191,9 @@ export const generateTransactionReport = async ({
   dateRange,
   transactions,
   showTransactions = false,
-  reportTitle = "Transaction Report"
+  reportTitle = "Transaction Report",
+  previewOnly = false,
+  returnPdfObject = false
 }: {
   companyName: string;
   companyAddress: string;
@@ -194,6 +206,8 @@ export const generateTransactionReport = async ({
   transactions?: any[];
   showTransactions?: boolean;
   reportTitle?: string;
+  previewOnly?: boolean;
+  returnPdfObject?: boolean;
 }) => {
   // Create a container for the report
   const reportContainer = document.createElement('div');
@@ -374,8 +388,57 @@ export const generateTransactionReport = async ({
       filename = `Transactions_Report.pdf`;
     }
     
-    // Export to PDF
-    await exportToPdf('transaction-report-container', filename);
+    if (previewOnly) {
+      // Open the report in a new window for preview
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write('<html><head><title>Print Preview</title>');
+        printWindow.document.write('<style>');
+        printWindow.document.write(`
+          body { font-family: Arial, sans-serif; padding: 15px; margin: 0; }
+          .print-controls { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; display: flex; justify-content: center; gap: 10px; }
+          .btn { padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+          .btn-primary { background-color: #2563eb; color: white; border: none; }
+          .btn-secondary { background-color: #e5e7eb; color: #374151; border: none; }
+          .btn-success { background-color: #10b981; color: white; border: none; }
+          .btn-danger { background-color: #ef4444; color: white; border: none; }
+          .btn:hover { opacity: 0.9; }
+          .container { padding: 20px; }
+          @media print {
+            .print-controls { display: none; }
+            body { padding: 0; }
+          }
+        `);
+        printWindow.document.write('</style></head><body>');
+        
+        // Add control buttons at the top
+        printWindow.document.write(`
+          <div class="print-controls">
+            <button class="btn btn-primary" onclick="window.print()">Print Document</button>
+            <button class="btn btn-success" onclick="window.opener.generateTransactionReport(${JSON.stringify({
+              companyName, companyAddress, companyPhone, companyEmail, companyPan,
+              transaction, entity, dateRange, transactions, showTransactions, reportTitle
+            })})">Export as PDF</button>
+            <button class="btn btn-secondary" onclick="window.close()">Close Preview</button>
+          </div>
+        `);
+        
+        printWindow.document.write('<div class="container">');
+        printWindow.document.write(reportContainer.innerHTML);
+        printWindow.document.write('</div></body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+      } else {
+        toast.error("Failed to open preview window");
+      }
+    } else {
+      // Export to PDF
+      const pdf = await exportToPdf('transaction-report-container', filename);
+      
+      if (returnPdfObject) {
+        return pdf;
+      }
+    }
   } catch (error) {
     console.error("Error generating report:", error);
     toast.error("Failed to generate PDF report");
@@ -384,6 +447,105 @@ export const generateTransactionReport = async ({
     if (document.body.contains(reportContainer)) {
       document.body.removeChild(reportContainer);
     }
+  }
+};
+
+// Function to email a report as PDF attachment
+export const emailReport = async (options: {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail?: string;
+  companyPan?: string;
+  transaction?: any;
+  entity?: any;
+  dateRange?: { from: string; to: string };
+  transactions?: any[];
+  showTransactions?: boolean;
+  reportTitle?: string;
+  recipient?: string;
+}) => {
+  try {
+    const { 
+      companyName, 
+      companyAddress, 
+      companyPhone, 
+      companyEmail, 
+      companyPan,
+      transaction, 
+      entity, 
+      dateRange, 
+      transactions,
+      showTransactions,
+      reportTitle,
+      recipient
+    } = options;
+
+    // Generate a descriptive subject line
+    let subject = "";
+    let body = "";
+    
+    if (transaction) {
+      subject = `${reportTitle || transaction.type} - ${transaction.id} - ${companyName}`;
+      body = `Dear ${entity?.name || 'Sir/Madam'},\n\nPlease find attached the ${
+        transaction.type === "Purchase" ? "Purchase Invoice" : 
+        transaction.type === "Sale" ? "Sales Invoice" : 
+        transaction.type === "Payment" ? "Payment Receipt" : 
+        "Transaction Report"
+      } (${transaction.id}) from ${companyName}.\n\nAmount: रू ${formatNumber(Math.abs(transaction.amount))}\nDate: ${transaction.date}\n\nThank you for your business.\n\nRegards,\n${companyName}\n${companyPhone}`;
+    } else if (entity) {
+      subject = `${reportTitle || "Statement"} - ${entity.name} - ${companyName}`;
+      body = `Dear ${entity.name},\n\nPlease find attached the ${reportTitle || "Statement"} from ${companyName}.\n\n${
+        dateRange ? `Report Period: ${dateRange.from} - ${dateRange.to}\n\n` : ''
+      }Thank you for your business.\n\nRegards,\n${companyName}\n${companyPhone}`;
+    } else {
+      subject = `${reportTitle || "Transaction Report"} - ${companyName}`;
+      body = `Dear Sir/Madam,\n\nPlease find attached the ${reportTitle || "Transaction Report"} from ${companyName}.\n\n${
+        dateRange ? `Report Period: ${dateRange.from} - ${dateRange.to}\n\n` : ''
+      }Thank you for your business.\n\nRegards,\n${companyName}\n${companyPhone}`;
+    }
+
+    // Generate a unique temporary filename for the PDF
+    const timestamp = new Date().getTime();
+    let filename = "";
+    
+    if (transaction) {
+      filename = `${transaction.type}_${transaction.id}_${timestamp}.pdf`;
+    } else if (entity) {
+      filename = `${entity.name.replace(/\s+/g, '_')}_Statement_${timestamp}.pdf`;
+    } else {
+      filename = `Transactions_Report_${timestamp}.pdf`;
+    }
+
+    // First generate the PDF but get it returned rather than saved
+    await generateTransactionReport({
+      companyName,
+      companyAddress,
+      companyPhone,
+      companyEmail,
+      companyPan,
+      transaction,
+      entity,
+      dateRange,
+      transactions,
+      showTransactions,
+      reportTitle,
+      returnPdfObject: true
+    });
+
+    // Set up mailto link with subject and body
+    const mailtoLink = `mailto:${recipient || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Open email client
+    window.location.href = mailtoLink;
+    
+    toast.success("Email client opened. Please manually attach the PDF file you just exported.");
+    
+    return true;
+  } catch (error) {
+    console.error("Error emailing report:", error);
+    toast.error("Failed to prepare email. Please try again.");
+    return false;
   }
 };
 
