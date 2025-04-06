@@ -22,14 +22,16 @@ import {
   X
 } from "lucide-react";
 import { formatCurrency } from "@/utils/currency";
-import { formatNepaliDate } from "@/utils/nepali-date";
+import { formatNepaliDate, formatNepaliDateNP } from "@/utils/nepali-date";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InvoiceView from "@/components/transactions/InvoiceView";
 import TransactionActionButtons from "@/components/transactions/TransactionActionButtons";
 import TransactionForm from "@/components/transactions/TransactionForm";
 import { toast } from "@/components/ui/toast-utils";
+import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
+import { generateTransactionReport } from "@/utils/print-utils";
+import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
 
-// Mock data for supplier details
 const mockSuppliersData = {
   "SP001": { 
     id: "SP001", 
@@ -78,7 +80,6 @@ const mockSuppliersData = {
   },
 };
 
-// Mock transaction data
 const mockTransactions = {
   "SP001": [
     { id: "ST001", date: "2081-01-10", nepaliDate: "२०८१-०१-१०", type: "Purchase", description: "Computer Equipment", amount: 25000, balance: 25000 },
@@ -114,6 +115,7 @@ const SupplierDetail = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [transactionFormOpen, setTransactionFormOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<"sale" | "purchase" | "payment">("purchase");
+  const [printVisible, setPrintVisible] = useState(false);
   
   const supplier = supplierId ? mockSuppliersData[supplierId] : null;
   const transactions = supplierId ? (mockTransactions[supplierId] || []) : [];
@@ -143,13 +145,147 @@ const SupplierDetail = () => {
   };
   
   const handlePrint = () => {
-    window.print();
-    toast.success("Printing initiated.");
+    if (!selectedTransaction && (!supplier || transactions.length === 0)) {
+      toast.error("No transaction data available to print");
+      return;
+    }
+    
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
+    if (selectedTransaction) {
+      generateTransactionReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        companyPan: "123456789",
+        transaction: {
+          ...selectedTransaction,
+          currentDate,
+          currentTime,
+          currentNepaliDate,
+          fiscalYear: fiscalYear.year,
+          items: selectedTransaction.type === "Purchase" ? [
+            { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+            { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+          ] : []
+        },
+        entity: supplier,
+        showTransactions: false,
+        reportTitle: selectedTransaction.type === "Purchase" ? "Purchase Invoice" : "Payment Receipt"
+      });
+    } else {
+      generateTransactionReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        companyPan: "123456789",
+        transaction: {
+          id: `STMT-${supplier.id}-${Date.now()}`,
+          date: currentDate,
+          nepaliDate: currentNepaliDate,
+          type: "Report",
+          description: `Supplier Statement - ${supplier.name}`,
+          amount: supplier.balance,
+          balance: supplier.balance,
+          currentDate,
+          currentTime,
+          currentNepaliDate,
+          fiscalYear: fiscalYear.year
+        },
+        entity: supplier,
+        dateRange: dateFilter.from && dateFilter.to ? {
+          from: dateFilter.from,
+          to: dateFilter.to
+        } : undefined,
+        transactions: filteredTransactions,
+        showTransactions: true,
+        reportTitle: "Supplier Statement"
+      });
+    }
+    
+    toast.success("Printing initiated");
   };
   
   const handleDownload = () => {
-    toast.success("Download initiated.");
-    console.log("Download transaction", selectedTransaction);
+    if (!selectedTransaction && (!supplier || transactions.length === 0)) {
+      toast.error("No transaction data available to export");
+      return;
+    }
+    
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
+    if (selectedTransaction) {
+      generateTransactionReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        companyPan: "123456789",
+        transaction: {
+          ...selectedTransaction,
+          currentDate,
+          currentTime,
+          currentNepaliDate,
+          fiscalYear: fiscalYear.year,
+          items: selectedTransaction.type === "Purchase" ? [
+            { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+            { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+          ] : []
+        },
+        entity: supplier,
+        showTransactions: false,
+        reportTitle: selectedTransaction.type === "Purchase" ? "Purchase Invoice" : "Payment Receipt"
+      });
+    } else {
+      generateTransactionReport({
+        companyName: "Vyas Accounting",
+        companyAddress: "Kathmandu, Nepal",
+        companyPhone: "+977 1234567890",
+        companyEmail: "info@vyasaccounting.com",
+        companyPan: "123456789",
+        transaction: {
+          id: `STMT-${supplier.id}-${Date.now()}`,
+          date: currentDate,
+          nepaliDate: currentNepaliDate,
+          type: "Report",
+          description: `Supplier Statement - ${supplier.name}`,
+          amount: supplier.balance,
+          balance: supplier.balance,
+          currentDate,
+          currentTime,
+          currentNepaliDate,
+          fiscalYear: fiscalYear.year
+        },
+        entity: supplier,
+        dateRange: dateFilter.from && dateFilter.to ? {
+          from: dateFilter.from,
+          to: dateFilter.to
+        } : undefined,
+        transactions: filteredTransactions,
+        showTransactions: true,
+        reportTitle: "Supplier Statement"
+      });
+    }
+    
+    toast.success("PDF export successful");
   };
   
   if (!supplier) {
@@ -178,11 +314,21 @@ const SupplierDetail = () => {
           </Button>
           
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" /> Print
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrint}
+              className="flex items-center gap-1 hover:bg-slate-100"
+            >
+              <Printer className="h-4 w-4" /> Print
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <FileDown className="mr-2 h-4 w-4" /> Export
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDownload}
+              className="flex items-center gap-1 hover:bg-slate-100"
+            >
+              <FileDown className="h-4 w-4" /> Export
             </Button>
           </div>
         </div>
@@ -302,7 +448,59 @@ const SupplierDetail = () => {
             entity={supplier}
           />
         )}
+        
+        {supplier && selectedTransaction && (
+          <div className="print-only hidden">
+            <TransactionPrintTemplate
+              companyName="Vyas Accounting"
+              companyAddress="Kathmandu, Nepal"
+              companyPhone="+977 1234567890"
+              companyEmail="info@vyasaccounting.com"
+              companyPan="123456789"
+              transaction={{
+                ...selectedTransaction,
+                currentDate: new Date().toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }),
+                currentTime: new Date().toLocaleTimeString('en-US'),
+                currentNepaliDate: formatNepaliDateNP(new Date()),
+                fiscalYear: getCurrentFiscalYear().year,
+                items: selectedTransaction.type === "Purchase" ? [
+                  { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+                  { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+                ] : []
+              }}
+              entity={supplier}
+              showTransactions={false}
+            />
+          </div>
+        )}
       </div>
+      
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-only, .print-only * {
+              visibility: visible;
+            }
+            .print-only {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+          }
+        `
+      }} />
     </MainLayout>
   );
 };
