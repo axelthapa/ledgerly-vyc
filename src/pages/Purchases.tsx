@@ -72,11 +72,32 @@ const Purchases = () => {
   };
   
   const handlePrint = () => {
+    if (!supplierData || !currentTransaction) {
+      toast.error("No transaction data available to print");
+      return;
+    }
+    
+    // Get current date and time
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const currentNepaliDate = formatNepaliDateNP(now);
+    const fiscalYear = getCurrentFiscalYear();
+    
+    // First set the print view visible
     setPrintVisible(true);
+    
+    // Use a short timeout to ensure the DOM is updated
     setTimeout(() => {
+      // Print the document
       window.print();
+      // Hide the print view after printing
       setPrintVisible(false);
-      toast.success("Printing initiated.");
+      toast.success("Printing initiated");
     }, 100);
   };
 
@@ -97,6 +118,15 @@ const Purchases = () => {
     const currentNepaliDate = formatNepaliDateNP(now);
     const fiscalYear = getCurrentFiscalYear();
     
+    // Generate mock items if none exist
+    const mockItems = currentTransaction.items && currentTransaction.items.length > 0 
+      ? currentTransaction.items 
+      : [
+          { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+          { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+        ];
+    
+    // Generate the transaction report
     generateTransactionReport({
       companyName: "Your Company",
       companyAddress: "Kathmandu, Nepal",
@@ -108,7 +138,8 @@ const Purchases = () => {
         currentDate,
         currentTime,
         currentNepaliDate,
-        fiscalYear: fiscalYear.year
+        fiscalYear: fiscalYear.year,
+        items: mockItems
       },
       entity: supplierData,
       showTransactions: false,
@@ -198,7 +229,23 @@ const Purchases = () => {
               companyPhone="01-1234567"
               companyEmail="info@yourcompany.com"
               companyPan="123456789"
-              transaction={currentTransaction}
+              transaction={{
+                ...currentTransaction,
+                currentDate: new Date().toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }),
+                currentTime: new Date().toLocaleTimeString('en-US'),
+                currentNepaliDate: formatNepaliDateNP(new Date()),
+                fiscalYear: getCurrentFiscalYear().year,
+                items: currentTransaction.items && currentTransaction.items.length > 0 
+                  ? currentTransaction.items 
+                  : [
+                      { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+                      { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+                    ]
+              }}
               entity={supplierData}
               showTransactions={false}
             />
