@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,10 @@ const LoginForm = () => {
   // Check for "VYC" sequence
   useEffect(() => {
     if (keySequence === "VYC") {
+      // Generate verification key right when login form appears
+      const key = generateValidationKey();
+      console.log("Generated verification key:", key);
+      console.log("Expected input:", convertToLetters(key));
       setShowLoginForm(true);
     }
   }, [keySequence]);
@@ -92,7 +97,7 @@ const LoginForm = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate username and password first
+    // Validate username and password
     const user = ADMIN_USERS.find(user => user.username.toLowerCase() === username.toLowerCase());
     
     if (!user) {
@@ -102,16 +107,6 @@ const LoginForm = () => {
     
     if (user.password !== password) {
       toast.error("Invalid password. Please try again.");
-      return;
-    }
-    
-    if (!isValidationKeyGenerated) {
-      // First login attempt - generate key and wait for verification
-      const key = generateValidationKey();
-      console.log("Generated verification key:", key);
-      console.log("Expected input:", convertToLetters(key));
-      setLoginAttempt(true);
-      toast.success("Username and password verified. Please enter the verification key.");
       return;
     }
     
@@ -154,10 +149,6 @@ const LoginForm = () => {
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
     if (isLoggedIn) {
       setShowLoginForm(false);
-    } else {
-      // For better UX, we'll show the login form on page load in development
-      // In production, keep this commented out to enforce the VYC key sequence
-      // setShowLoginForm(true);
     }
   }, []);
   
@@ -199,13 +190,24 @@ const LoginForm = () => {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
         <Card className="w-full max-w-md shadow-xl">
           <CardContent className="p-10 text-center">
-            <h2 className="text-2xl font-bold mb-4">VYC Accounting System</h2>
-            <p className="text-muted-foreground mb-6">
-              Press <kbd className="px-2 py-1 bg-gray-100 rounded border">V</kbd> + <kbd className="px-2 py-1 bg-gray-100 rounded border">Y</kbd> + <kbd className="px-2 py-1 bg-gray-100 rounded border">C</kbd> keys to access the login screen.
-            </p>
-            <div className="flex justify-center">
+            <div className="flex justify-center mb-2">
               <div className="h-20 w-20 rounded-full bg-vyc-accent flex items-center justify-center">
                 <span className="text-4xl font-bold text-black">VYC</span>
+              </div>
+            </div>
+            
+            {/* Date and Time Display - Only show this initially */}
+            <div className="mt-4 text-sm border rounded-lg p-2 bg-gray-50">
+              <div className="flex items-center justify-center gap-2 font-bold">
+                <Clock className="h-4 w-4" /> 
+                {formatTime(currentTime)}
+              </div>
+              <div className="flex items-center justify-center gap-1 mt-1">
+                <Calendar className="h-4 w-4" />
+                <span>{formatEnglishDate(currentTime)}</span>
+              </div>
+              <div className="mt-1 font-medium">
+                {formatNepaliDateNP(currentTime)}
               </div>
             </div>
           </CardContent>
@@ -224,9 +226,6 @@ const LoginForm = () => {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Login to VYC</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account
-          </CardDescription>
           
           {/* Date and Time Display */}
           <div className="mt-2 text-sm border rounded-lg p-2 bg-gray-50">
@@ -289,29 +288,27 @@ const LoginForm = () => {
               </div>
             </div>
             
-            {isValidationKeyGenerated && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="verificationKey">Verification Key</Label>
-                  <span className="text-xs bg-vyc-accent text-black px-2 py-1 rounded font-mono">
-                    Key: {validationKey}
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="absolute left-3 top-3 text-gray-400">
-                    <KeyRound size={18} />
-                  </div>
-                  <Input
-                    id="verificationKey"
-                    placeholder="Enter verification key"
-                    value={verificationKey}
-                    onChange={(e) => setVerificationKey(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="verificationKey">Verification Key</Label>
+                <span className="text-xs bg-vyc-accent text-black px-2 py-1 rounded font-mono">
+                  Key: {validationKey}
+                </span>
               </div>
-            )}
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">
+                  <KeyRound size={18} />
+                </div>
+                <Input
+                  id="verificationKey"
+                  placeholder="Enter verification key"
+                  value={verificationKey}
+                  onChange={(e) => setVerificationKey(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
             
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -329,7 +326,7 @@ const LoginForm = () => {
             
             <div className="flex space-x-2">
               <Button type="submit" className="w-full bg-vyc-primary hover:bg-vyc-primary-dark">
-                {loginAttempt ? "Verify & Login" : "Login"}
+                Login
               </Button>
               <AlertDialog open={isExitDialogOpen} onOpenChange={setIsExitDialogOpen}>
                 <AlertDialogTrigger asChild>
