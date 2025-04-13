@@ -1,7 +1,9 @@
+
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import TopBar from "./TopBar";
 import { toast } from "@/components/ui/toast-utils";
+import { ElectronInfo } from "./ElectronInfo";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -32,6 +34,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <main className={`flex-1 overflow-auto transition-all p-6 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
           {children}
         </main>
+      </div>
+      
+      <div className="fixed bottom-2 right-2">
+        <ElectronInfo />
       </div>
     </div>
   );
