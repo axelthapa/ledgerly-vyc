@@ -14,6 +14,8 @@ import DateTimeDisplay from "@/components/dashboard/DateTimeDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import { useNavigate } from "react-router-dom";
+import DailyTransactionDialog from "@/components/daily-transactions/DailyTransactionDialog";
+import TransactionLog from "@/components/daily-transactions/TransactionLog";
 
 const Dashboard = () => {
   const greeting = getGreeting();
@@ -30,11 +32,15 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{greeting}, Administrator</h1>
-          <p className="text-muted-foreground">
-            Here's what's happening with your business today.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{greeting}, Administrator</h1>
+            <p className="text-muted-foreground">
+              Here's what's happening with your business today.
+            </p>
+          </div>
+          
+          <DailyTransactionDialog />
         </div>
         
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -152,6 +158,10 @@ const Dashboard = () => {
                 </Card>
               </TabsContent>
             </Tabs>
+            
+            <div className="mt-6">
+              <TransactionLog />
+            </div>
             
             <div className="mt-6">
               <RecentActivity />
