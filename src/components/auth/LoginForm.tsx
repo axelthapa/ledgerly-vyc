@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +17,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatNepaliDate, formatNepaliDateNP } from "@/utils/nepali-date";
 
 // Mock admin users
@@ -38,6 +36,8 @@ const LoginForm = () => {
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [isValidationKeyGenerated, setIsValidationKeyGenerated] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [keySequence, setKeySequence] = useState("");
   
   // Generate random validation key without 0
   const generateValidationKey = () => {
@@ -67,6 +67,27 @@ const LoginForm = () => {
     
     return () => clearInterval(timer);
   }, []);
+  
+  // Add keyboard listener to detect "VYC" sequence
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const newSequence = keySequence + e.key.toUpperCase();
+      setKeySequence(newSequence.slice(-3)); // Keep only the last 3 characters
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [keySequence]);
+  
+  // Check for "VYC" sequence
+  useEffect(() => {
+    if (keySequence === "VYC") {
+      setShowLoginForm(true);
+    }
+  }, [keySequence]);
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +133,9 @@ const LoginForm = () => {
       localStorage.removeItem("rememberedUsername");
     }
     
+    // Set login state
+    localStorage.setItem("isLoggedIn", "true");
+    
     // Redirect to dashboard
     setTimeout(() => {
       window.location.href = "/dashboard";
@@ -124,6 +148,16 @@ const LoginForm = () => {
     if (savedUsername) {
       setUsername(savedUsername);
       setRememberMe(true);
+    }
+    
+    // Check if user is already logged in (redirect should happen in Index.tsx)
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (isLoggedIn) {
+      setShowLoginForm(false);
+    } else {
+      // For better UX, we'll show the login form on page load in development
+      // In production, keep this commented out to enforce the VYC key sequence
+      // setShowLoginForm(true);
     }
   }, []);
   
@@ -159,6 +193,26 @@ const LoginForm = () => {
       day: "numeric",
     });
   };
+  
+  if (!showLoginForm) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardContent className="p-10 text-center">
+            <h2 className="text-2xl font-bold mb-4">VYC Accounting System</h2>
+            <p className="text-muted-foreground mb-6">
+              Press <kbd className="px-2 py-1 bg-gray-100 rounded border">V</kbd> + <kbd className="px-2 py-1 bg-gray-100 rounded border">Y</kbd> + <kbd className="px-2 py-1 bg-gray-100 rounded border">C</kbd> keys to access the login screen.
+            </p>
+            <div className="flex justify-center">
+              <div className="h-20 w-20 rounded-full bg-vyc-accent flex items-center justify-center">
+                <span className="text-4xl font-bold text-black">VYC</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
@@ -256,9 +310,6 @@ const LoginForm = () => {
                     required
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter the verification key (convert each digit to its corresponding letter)
-                </p>
               </div>
             )}
             
@@ -310,8 +361,6 @@ const LoginForm = () => {
           </p>
         </CardFooter>
       </Card>
-      
-      {/* We've removed the debug dialog that was here previously */}
     </div>
   );
 };

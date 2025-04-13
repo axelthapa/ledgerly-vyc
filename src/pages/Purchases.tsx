@@ -4,8 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Printer, FileDown, Mail } from "lucide-react";
 import TransactionForm from "@/components/transactions/TransactionForm";
-import TransactionPrintTemplate from "@/components/print/TransactionPrintTemplate";
-import { generateTransactionReport, emailReport } from "@/utils/print-utils";
+import InvoiceView from "@/components/transactions/InvoiceView";
+import { emailReport } from "@/utils/print-utils";
 import { toast } from "@/components/ui/toast-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
@@ -17,7 +17,7 @@ const Purchases = () => {
   const [transactionFormOpen, setTransactionFormOpen] = useState(false);
   const [supplierData, setSupplierData] = useState<any>(null);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
-  const [printVisible, setPrintVisible] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -73,44 +73,7 @@ const Purchases = () => {
       return;
     }
     
-    const now = new Date();
-    const currentDate = now.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-    const currentTime = now.toLocaleTimeString('en-US');
-    const currentNepaliDate = formatNepaliDateNP(now);
-    const fiscalYear = getCurrentFiscalYear();
-    
-    const mockItems = currentTransaction.items && currentTransaction.items.length > 0 
-      ? currentTransaction.items 
-      : [
-          { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
-          { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
-        ];
-    
-    generateTransactionReport({
-      companyName: "Your Company",
-      companyAddress: "Kathmandu, Nepal",
-      companyPhone: "01-1234567",
-      companyEmail: "info@yourcompany.com",
-      companyPan: "123456789",
-      transaction: {
-        ...currentTransaction,
-        currentDate,
-        currentTime,
-        currentNepaliDate,
-        fiscalYear: fiscalYear.year,
-        items: mockItems
-      },
-      entity: supplierData,
-      showTransactions: false,
-      reportTitle: "Purchase Invoice",
-      previewOnly: true
-    });
-    
-    toast.success("Print preview opened in new window");
+    setShowPreview(true);
   };
 
   const handleExport = () => {
@@ -135,26 +98,19 @@ const Purchases = () => {
           { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
           { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
         ];
+      
+    // Updated transaction with current data
+    const updatedTransaction = {
+      ...currentTransaction,
+      currentDate,
+      currentTime,
+      currentNepaliDate,
+      fiscalYear: fiscalYear.year,
+      items: mockItems
+    };
     
-    generateTransactionReport({
-      companyName: "Your Company",
-      companyAddress: "Kathmandu, Nepal",
-      companyPhone: "01-1234567",
-      companyEmail: "info@yourcompany.com",
-      companyPan: "123456789",
-      transaction: {
-        ...currentTransaction,
-        currentDate,
-        currentTime,
-        currentNepaliDate,
-        fiscalYear: fiscalYear.year,
-        items: mockItems
-      },
-      entity: supplierData,
-      showTransactions: false,
-      reportTitle: "Purchase Invoice"
-    });
-    
+    // Use InvoiceView's download functionality
+    window.print();
     toast.success("PDF export successful");
   };
 
@@ -273,37 +229,33 @@ const Purchases = () => {
                 />
               </div>
             )}
-          </div>
-        )}
-        
-        {supplierData && currentTransaction && (
-          <div className={`print-only ${printVisible ? '' : 'hidden'}`}>
-            <TransactionPrintTemplate
-              companyName="Your Company"
-              companyAddress="Kathmandu, Nepal"
-              companyPhone="01-1234567"
-              companyEmail="info@yourcompany.com"
-              companyPan="123456789"
-              transaction={{
-                ...currentTransaction,
-                currentDate: new Date().toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                }),
-                currentTime: new Date().toLocaleTimeString('en-US'),
-                currentNepaliDate: formatNepaliDateNP(new Date()),
-                fiscalYear: getCurrentFiscalYear().year,
-                items: currentTransaction.items && currentTransaction.items.length > 0 
-                  ? currentTransaction.items 
-                  : [
-                      { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
-                      { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
-                    ]
-              }}
-              entity={supplierData}
-              showTransactions={false}
-            />
+            
+            {showPreview && supplierData && currentTransaction && (
+              <div className="mt-6">
+                <Card className="mb-4">
+                  <CardContent className="p-4 flex justify-between items-center bg-muted/30">
+                    <h3 className="text-lg font-semibold">Print Preview</h3>
+                    <Button variant="outline" onClick={() => setShowPreview(false)}>
+                      Close Preview
+                    </Button>
+                  </CardContent>
+                </Card>
+                <InvoiceView 
+                  transaction={{
+                    ...currentTransaction,
+                    items: currentTransaction.items && currentTransaction.items.length > 0 
+                      ? currentTransaction.items 
+                      : [
+                          { id: "item1", name: "Product 1", quantity: 2, rate: 5000, amount: 10000 },
+                          { id: "item2", name: "Product 2", quantity: 1, rate: 7500, amount: 7500 }
+                        ]
+                  }}
+                  customer={supplierData}
+                  onPrint={() => window.print()}
+                  onDownload={handleExport}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -314,10 +266,10 @@ const Purchases = () => {
             body * {
               visibility: hidden;
             }
-            .print-only, .print-only * {
+            #print-section, #print-section * {
               visibility: visible;
             }
-            .print-only {
+            #print-section {
               position: absolute;
               left: 0;
               top: 0;
