@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for Electron integration
  */
@@ -132,6 +131,24 @@ export const backupDatabase = async (): Promise<{ success: boolean; filePath?: s
     return await window.electron.db.backup();
   } catch (error) {
     console.error('Failed to backup database:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+};
+
+export const restoreDatabase = async (): Promise<{ success: boolean; message?: string; error?: string }> => {
+  if (!isElectron()) {
+    console.warn('restoreDatabase is only available in Electron');
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    // @ts-ignore - electron property exists in Electron environment
+    return await window.electron.db.restore();
+  } catch (error) {
+    console.error('Failed to restore database:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : String(error) 

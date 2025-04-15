@@ -8,7 +8,8 @@
     "start": "electron .",
     "dev": "cross-env NODE_ENV=development electron .",
     "build": "electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "build-win": "electron-builder --win"
   },
   "author": "VYC",
   "license": "MIT",
@@ -51,7 +52,10 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "installerIcon": "../public/favicon.ico",
+      "uninstallerIcon": "../public/favicon.ico",
+      "license": "LICENSE.txt"
     },
     "linux": {
       "target": "AppImage"

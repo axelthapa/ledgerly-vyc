@@ -14,14 +14,15 @@ contextBridge.exposeInMainWorld('electron', {
     query: (query, params) => ipcRenderer.invoke('db-query', { query, params }),
     update: (query, params) => ipcRenderer.invoke('db-update', { query, params }),
     getTableData: (tableName) => ipcRenderer.invoke('db-get-table', tableName),
-    backup: () => ipcRenderer.invoke('db-backup')
+    backup: () => ipcRenderer.invoke('db-backup'),
+    restore: () => ipcRenderer.invoke('db-restore')
   },
   
   // App info
   getAppInfo: () => ({
     isElectron: true,
     platform: process.platform,
-    version: process.env.npm_package_version,
+    version: process.env.npm_package_version || '1.0.0',
     dbPath: ipcRenderer.invoke('get-db-path')
   })
 });

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -20,13 +19,13 @@ import {
   RefreshCw,
   Lock
 } from "lucide-react";
+import { backupDatabase, restoreDatabase, isElectron } from "@/utils/electron-utils";
 
 const Backup = () => {
   const [backupProgress, setBackupProgress] = useState(0);
   const [restoreProgress, setRestoreProgress] = useState(0);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
   const [backupHistory] = useState([
     { date: "2081-03-15", size: "2.3 MB", type: "Manual", status: "Complete" },
@@ -38,94 +37,75 @@ const Backup = () => {
 
   const fiscalYear = getCurrentFiscalYear();
   
-  const handleBackup = () => {
+  const handleBackup = async () => {
+    if (!isElectron()) {
+      toast.error("Backup is only available in desktop application");
+      return;
+    }
+    
     setIsBackingUp(true);
     setBackupProgress(0);
     
-    // Simulate backup process
-    const interval = setInterval(() => {
-      setBackupProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsBackingUp(false);
-          generateBackupFile();
-          toast.success("Backup completed successfully!");
-          return 100;
-        }
-        return prev + 10;
-      });
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setBackupProgress(prev => Math.min(prev + 10, 90));
     }, 300);
-  };
-  
-  const generateBackupFile = () => {
-    // Create mock data for the backup
-    const mockData = {
-      version: "1.0.0",
-      date: new Date().toISOString(),
-      fiscalYear: fiscalYear.year,
-      data: {
-        customers: Array(50).fill(0).map((_, i) => ({
-          id: `CN00${i+1}`,
-          name: `Customer ${i+1}`,
-          address: "Sample Address",
-          phone: `98${Math.floor(10000000 + Math.random() * 90000000)}`,
-          balance: Math.floor(Math.random() * 50000)
-        })),
-        suppliers: Array(20).fill(0).map((_, i) => ({
-          id: `SP00${i+1}`,
-          name: `Supplier ${i+1}`,
-          address: "Sample Address",
-          phone: `98${Math.floor(10000000 + Math.random() * 90000000)}`,
-          balance: Math.floor(Math.random() * 50000)
-        })),
-        transactions: Array(100).fill(0).map((_, i) => ({
-          id: `T00${i+1}`,
-          date: new Date().toISOString(),
-          type: ["Sale", "Purchase", "Payment"][Math.floor(Math.random() * 3)],
-          amount: Math.floor(1000 + Math.random() * 50000),
-          entityId: i % 2 === 0 ? `CN00${Math.floor(Math.random() * 50) + 1}` : `SP00${Math.floor(Math.random() * 20) + 1}`
-        }))
-      }
-    };
     
-    // Create a blob and download it
-    const dataStr = JSON.stringify(mockData);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.download = `vyas_accounting_backup_${new Date().toISOString().split('T')[0]}.json`;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    try {
+      const result = await backupDatabase();
+      clearInterval(progressInterval);
+      
+      if (result.success) {
+        setBackupProgress(100);
+        toast.success(`Database backed up to ${result.filePath}`);
+      } else {
+        toast.error(`Backup failed: ${result.error}`);
+      }
+    } catch (error) {
+      clearInterval(progressInterval);
+      toast.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setTimeout(() => {
+        setIsBackingUp(false);
+        setBackupProgress(0);
+      }, 1000);
     }
   };
   
-  const handleRestoreConfirm = () => {
+  const handleRestoreConfirm = async () => {
     setConfirmRestoreOpen(false);
-    if (!selectedFile) return;
+    if (!isElectron()) {
+      toast.error("Restore is only available in desktop application");
+      return;
+    }
     
     setIsRestoring(true);
     setRestoreProgress(0);
     
-    // Simulate restore process
-    const interval = setInterval(() => {
-      setRestoreProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsRestoring(false);
-          toast.success("Data restored successfully!");
-          setSelectedFile(null);
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 200);
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setRestoreProgress(prev => Math.min(prev + 10, 90));
+    }, 300);
+    
+    try {
+      const result = await restoreDatabase();
+      clearInterval(progressInterval);
+      
+      if (result.success) {
+        setRestoreProgress(100);
+        toast.success(result.message || "Database restored successfully. The application will restart.");
+      } else {
+        toast.error(`Restore failed: ${result.error}`);
+      }
+    } catch (error) {
+      clearInterval(progressInterval);
+      toast.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setTimeout(() => {
+        setIsRestoring(false);
+        setRestoreProgress(0);
+      }, 1000);
+    }
   };
   
   return (
@@ -236,35 +216,13 @@ const Backup = () => {
               </div>
               
               <div className="flex items-center justify-center border-2 border-dashed rounded-md p-6">
-                {selectedFile ? (
-                  <div className="text-center">
-                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                    <p className="font-medium">{selectedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="mt-2"
-                      onClick={() => setSelectedFile(null)}
-                    >
-                      Change File
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center cursor-pointer">
-                    <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm font-medium">Click to select backup file</p>
-                    <p className="text-xs text-muted-foreground">or drag and drop</p>
-                    <Input 
-                      type="file" 
-                      accept=".json" 
-                      className="hidden" 
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                )}
+                <div className="text-center">
+                  <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="font-medium">Select a SQLite backup file</p>
+                  <p className="text-sm text-muted-foreground">
+                    Click the button below to select a backup file
+                  </p>
+                </div>
               </div>
               
               {isRestoring && (
@@ -280,7 +238,7 @@ const Backup = () => {
             <CardFooter>
               <Button 
                 onClick={() => setConfirmRestoreOpen(true)} 
-                disabled={!selectedFile || isRestoring}
+                disabled={isRestoring}
                 className="w-full"
                 variant="outline"
               >
@@ -426,6 +384,7 @@ const Backup = () => {
                 <p className="text-sm">
                   All current data including customers, suppliers, transactions, 
                   and settings will be replaced by the data in the backup file.
+                  The application will restart after the restore is complete.
                 </p>
               </div>
             </div>
