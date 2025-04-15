@@ -9,10 +9,19 @@ contextBridge.exposeInMainWorld('electron', {
   loadData: () => ipcRenderer.invoke('load-data'),
   printToPDF: (options) => ipcRenderer.invoke('print-to-pdf', options),
   
+  // Database operations
+  db: {
+    query: (query, params) => ipcRenderer.invoke('db-query', { query, params }),
+    update: (query, params) => ipcRenderer.invoke('db-update', { query, params }),
+    getTableData: (tableName) => ipcRenderer.invoke('db-get-table', tableName),
+    backup: () => ipcRenderer.invoke('db-backup')
+  },
+  
   // App info
   getAppInfo: () => ({
     isElectron: true,
     platform: process.platform,
-    version: process.env.npm_package_version
+    version: process.env.npm_package_version,
+    dbPath: ipcRenderer.invoke('get-db-path')
   })
 });

@@ -2,8 +2,15 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast-utils";
-import { Download, Upload, Printer, Info } from "lucide-react";
-import { isElectron, saveDataToFile, loadDataFromFile, printToPDF, getAppInfo } from '@/utils/electron-utils';
+import { Download, Upload, Printer, Database, HardDrive } from "lucide-react";
+import { 
+  isElectron, 
+  saveDataToFile, 
+  loadDataFromFile, 
+  printToPDF, 
+  getAppInfo,
+  backupDatabase
+} from '@/utils/electron-utils';
 
 interface ElectronFeaturesProps {
   getData?: () => any;
@@ -79,6 +86,20 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
     }
   };
 
+  const handleBackupDatabase = async () => {
+    try {
+      const result = await backupDatabase();
+      
+      if (result.success) {
+        toast.success(`Database backed up to ${result.filePath}`);
+      } else {
+        toast.error(`Failed to backup: ${result.error}`);
+      }
+    } catch (error) {
+      toast.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   return (
     <div className="flex flex-col space-y-4 p-4 bg-gray-50 rounded-lg border">
       <h3 className="text-md font-medium">Desktop Features</h3>
@@ -90,7 +111,7 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
           className="flex items-center gap-2"
         >
           <Download size={16} />
-          Save Data
+          Export JSON
         </Button>
         <Button 
           variant="outline" 
@@ -99,7 +120,7 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
           className="flex items-center gap-2"
         >
           <Upload size={16} />
-          Load Data
+          Import JSON
         </Button>
         <Button 
           variant="outline" 
@@ -107,15 +128,28 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
           className="flex items-center gap-2"
         >
           <Printer size={16} />
-          Export as PDF
+          Export PDF
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={handleBackupDatabase}
+          className="flex items-center gap-2"
+        >
+          <Database size={16} />
+          Backup DB
         </Button>
       </div>
       <div className="text-xs text-gray-500">
         <div className="flex items-center gap-1">
-          <Info size={12} />
+          <HardDrive size={12} />
           <span>Platform: {appInfo.platform || 'Unknown'}</span>
         </div>
         <div>Version: {appInfo.version || '1.0.0'}</div>
+        {appInfo.dbPath && (
+          <div className="truncate" title={appInfo.dbPath}>
+            DB: {appInfo.dbPath.split('\\').pop() || appInfo.dbPath.split('/').pop()}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "cross-env NODE_ENV=development electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "author": "VYC",
   "license": "MIT",
@@ -25,13 +26,28 @@
     "files": [
       "main.js",
       "preload.js",
+      "db/**/*",
       "../dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "db/templates",
+        "to": "db/templates",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "category": "public.app-category.finance"
     },
     "win": {
-      "target": "nsis"
+      "target": ["nsis"],
+      "icon": "../public/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
     },
     "linux": {
       "target": "AppImage"

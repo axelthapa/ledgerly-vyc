@@ -66,8 +66,81 @@ export const printToPDF = async (options?: any): Promise<{ success: boolean; fil
   }
 };
 
+// Database operations
+export const dbQuery = async (query: string, params: any[] = []): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+  if (!isElectron()) {
+    console.warn('dbQuery is only available in Electron');
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    // @ts-ignore - electron property exists in Electron environment
+    return await window.electron.db.query(query, params);
+  } catch (error) {
+    console.error('Failed to execute query:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+};
+
+export const dbUpdate = async (query: string, params: any[] = []): Promise<{ success: boolean; changes?: number; lastInsertRowid?: number; error?: string }> => {
+  if (!isElectron()) {
+    console.warn('dbUpdate is only available in Electron');
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    // @ts-ignore - electron property exists in Electron environment
+    return await window.electron.db.update(query, params);
+  } catch (error) {
+    console.error('Failed to execute update:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+};
+
+export const getTableData = async (tableName: string): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+  if (!isElectron()) {
+    console.warn('getTableData is only available in Electron');
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    // @ts-ignore - electron property exists in Electron environment
+    return await window.electron.db.getTableData(tableName);
+  } catch (error) {
+    console.error('Failed to get table data:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+};
+
+export const backupDatabase = async (): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+  if (!isElectron()) {
+    console.warn('backupDatabase is only available in Electron');
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    // @ts-ignore - electron property exists in Electron environment
+    return await window.electron.db.backup();
+  } catch (error) {
+    console.error('Failed to backup database:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+};
+
 // Get app information (platform, version)
-export const getAppInfo = (): { isElectron: boolean; platform?: string; version?: string } => {
+export const getAppInfo = (): { isElectron: boolean; platform?: string; version?: string; dbPath?: string } => {
   if (!isElectron()) {
     return { isElectron: false };
   }
