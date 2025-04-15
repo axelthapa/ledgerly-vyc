@@ -50,15 +50,18 @@ try {
 // Build the React application for production
 console.log('🔨 Building the React application...');
 try {
-  // Navigate to the parent directory where the React app is located
-  process.chdir('..');
+  // Get the project root directory
+  const projectRoot = path.resolve(__dirname, '..');
   
-  // Run the build command
-  execSync('npm run build', { stdio: 'inherit' });
+  // Make sure we're in the project root directory where package.json exists
+  process.chdir(projectRoot);
+  
+  // Run the build command with full path
+  execSync('npx vite build', { stdio: 'inherit' });
   console.log('✅ React application built successfully');
   
   // Return to the electron directory
-  process.chdir('electron');
+  process.chdir(path.join(projectRoot, 'electron'));
 } catch (error) {
   console.error('❌ Error building React application:', error);
   process.exit(1);
