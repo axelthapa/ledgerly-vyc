@@ -56,7 +56,20 @@ try {
   // Make sure we're in the project root directory where package.json exists
   process.chdir(projectRoot);
   
-  // Run the build command with full path
+  // Install the required packages if they're not already installed
+  console.log('📦 Ensuring build dependencies are installed...');
+  try {
+    // Check if vite is installed by trying to require it
+    execSync('npm list vite --depth=0', { stdio: 'ignore' });
+    console.log('✅ Vite is already installed');
+  } catch (e) {
+    console.log('🔄 Installing vite package...');
+    execSync('npm install --no-save vite@latest @vitejs/plugin-react-swc@latest', { stdio: 'inherit' });
+    console.log('✅ Vite packages installed successfully');
+  }
+  
+  // Run the build command
+  console.log('🏗️ Running vite build...');
   execSync('npx vite build', { stdio: 'inherit' });
   console.log('✅ React application built successfully');
   
