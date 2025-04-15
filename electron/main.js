@@ -41,10 +41,10 @@ function createWindow() {
 }
 
 // Initialize database before creating the window
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   try {
     // Initialize the database
-    initializeDatabase();
+    await initializeDatabase();
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -133,16 +133,16 @@ ipcMain.handle('print-to-pdf', async (event, options) => {
 
 // IPC handlers for database operations
 ipcMain.handle('db-query', async (event, { query, params }) => {
-  return executeQuery(query, params || []);
+  return await executeQuery(query, params || []);
 });
 
 ipcMain.handle('db-update', async (event, { query, params }) => {
-  return executeUpdate(query, params || []);
+  return await executeUpdate(query, params || []);
 });
 
 ipcMain.handle('db-get-table', async (event, tableName) => {
   const safeTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
-  return executeQuery(`SELECT * FROM ${safeTableName}`);
+  return await executeQuery(`SELECT * FROM ${safeTableName}`);
 });
 
 ipcMain.handle('db-backup', async () => {

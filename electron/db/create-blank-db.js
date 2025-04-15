@@ -1,7 +1,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 
 const createBlankDatabase = () => {
   console.log('Creating blank database template...');
@@ -20,18 +20,21 @@ const createBlankDatabase = () => {
   }
   
   // Create a new database
-  const db = new Database(dbPath);
+  const db = new sqlite3.Database(dbPath);
   
   // Read the schema file
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   
   // Execute the schema
-  db.exec(schema);
-  
-  // Close the database connection
-  db.close();
-  
-  console.log('Blank database template created successfully at:', dbPath);
+  db.exec(schema, (err) => {
+    if (err) {
+      console.error('Error creating database:', err.message);
+    } else {
+      console.log('Blank database template created successfully at:', dbPath);
+    }
+    // Close the database connection
+    db.close();
+  });
 };
 
 // Execute if this script is run directly

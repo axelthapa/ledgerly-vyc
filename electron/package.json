@@ -12,6 +12,9 @@
   },
   "author": "VYC",
   "license": "MIT",
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  },
   "devDependencies": {
     "cross-env": "^7.0.3",
     "electron": "^30.0.0",
@@ -26,6 +29,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "db-utils.js",
       "db/**/*",
       "../dist/**/*"
     ],

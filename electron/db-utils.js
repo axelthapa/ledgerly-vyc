@@ -1,7 +1,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const { app } = require('electron');
 
 // Determine the path for the user data directory
@@ -26,7 +26,7 @@ const getDatabasePath = () => {
   return path.join(dbDir, 'vyc_accounting.db');
 };
 
-// Check if database exists, if not create it from template
+// Initialize the database connection
 const initializeDatabase = () => {
   const dbPath = getDatabasePath();
   
@@ -50,7 +50,7 @@ const initializeDatabase = () => {
     console.log('Database created successfully at:', dbPath);
   }
   
-  return new Database(dbPath, { fileMustExist: true });
+  return new sqlite3.Database(dbPath);
 };
 
 // Get database connection
@@ -60,36 +60,42 @@ const getDatabase = () => {
 
 // Execute query and return results
 const executeQuery = (query, params = []) => {
-  const db = getDatabase();
-  try {
-    const stmt = db.prepare(query);
-    const result = stmt.all(params);
-    return { success: true, data: result };
-  } catch (error) {
-    console.error('Database query error:', error.message);
-    return { success: false, error: error.message };
-  } finally {
-    db.close();
-  }
+  return new Promise((resolve, reject) => {
+    const db = getDatabase();
+    
+    db.all(query, params, (err, rows) => {
+      db.close();
+      
+      if (err) {
+        console.error('Database query error:', err.message);
+        resolve({ success: false, error: err.message });
+      } else {
+        resolve({ success: true, data: rows });
+      }
+    });
+  });
 };
 
 // Execute update/insert and return result
 const executeUpdate = (query, params = []) => {
-  const db = getDatabase();
-  try {
-    const stmt = db.prepare(query);
-    const result = stmt.run(params);
-    return { 
-      success: true, 
-      changes: result.changes,
-      lastInsertRowid: result.lastInsertRowid
-    };
-  } catch (error) {
-    console.error('Database update error:', error.message);
-    return { success: false, error: error.message };
-  } finally {
-    db.close();
-  }
+  return new Promise((resolve, reject) => {
+    const db = getDatabase();
+    
+    db.run(query, params, function(err) {
+      db.close();
+      
+      if (err) {
+        console.error('Database update error:', err.message);
+        resolve({ success: false, error: err.message });
+      } else {
+        resolve({ 
+          success: true, 
+          changes: this.changes,
+          lastInsertRowid: this.lastID
+        });
+      }
+    });
+  });
 };
 
 module.exports = {
