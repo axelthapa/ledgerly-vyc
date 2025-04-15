@@ -9,7 +9,8 @@
     "dev": "cross-env NODE_ENV=development electron .",
     "build": "electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "build-win": "electron-builder --win"
+    "build-win": "electron-builder --win",
+    "build-win-only": "cross-env SKIP_REACT_BUILD=true node build-windows-app.js"
   },
   "author": "VYC",
   "license": "MIT",

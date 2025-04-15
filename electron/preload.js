@@ -19,10 +19,12 @@ contextBridge.exposeInMainWorld('electron', {
   },
   
   // App info
-  getAppInfo: () => ({
-    isElectron: true,
-    platform: process.platform,
-    version: process.env.npm_package_version || '1.0.0',
-    dbPath: ipcRenderer.invoke('get-db-path')
-  })
+  getAppInfo: () => {
+    return {
+      isElectron: true,
+      platform: process.platform,
+      version: process.env.npm_package_version || '1.0.0',
+      dbPath: ipcRenderer.invoke('get-db-path')
+    };
+  }
 });
