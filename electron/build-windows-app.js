@@ -3,6 +3,23 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Ensure necessary dependencies are installed in the electron directory
+console.log('📦 Checking and installing dependencies in electron directory...');
+try {
+  // Check if sqlite3 is installed
+  try {
+    require('sqlite3');
+    console.log('✅ sqlite3 module is already installed');
+  } catch (e) {
+    console.log('🔄 Installing sqlite3 module...');
+    execSync('npm install sqlite3', { stdio: 'inherit' });
+    console.log('✅ sqlite3 module installed successfully');
+  }
+} catch (error) {
+  console.error('❌ Error installing dependencies:', error);
+  process.exit(1);
+}
+
 // Ensure the db templates directory exists
 const templatesDir = path.join(__dirname, 'db', 'templates');
 if (!fs.existsSync(templatesDir)) {
