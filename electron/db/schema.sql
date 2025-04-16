@@ -1,179 +1,248 @@
 
--- VYC Accounting System Schema
+-- Settings table for application configuration
+CREATE TABLE IF NOT EXISTS settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  value TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Enable foreign keys
-PRAGMA foreign_keys = ON;
+-- Currencies table
+CREATE TABLE IF NOT EXISTS currencies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  is_default INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Customers Table
+-- Customers table
 CREATE TABLE IF NOT EXISTS customers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  customer_code TEXT UNIQUE,
+  id TEXT PRIMARY KEY, -- Custom format e.g. CN001
   name TEXT NOT NULL,
   address TEXT,
   phone TEXT,
   email TEXT,
-  tax_number TEXT,
-  credit_limit REAL DEFAULT 0,
-  outstanding_balance REAL DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  pan TEXT,
+  credit_days INTEGER DEFAULT 0, -- Credit period in days
+  opening_balance REAL DEFAULT 0,
+  balance_type TEXT DEFAULT 'CR', -- CR for credit, DR for debit
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Suppliers Table
+-- Suppliers table
 CREATE TABLE IF NOT EXISTS suppliers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  supplier_code TEXT UNIQUE,
+  id TEXT PRIMARY KEY, -- Custom format e.g. SP001
   name TEXT NOT NULL,
   address TEXT,
   phone TEXT,
   email TEXT,
-  tax_number TEXT,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  pan TEXT,
+  credit_days INTEGER DEFAULT 0, -- Credit period in days
+  opening_balance REAL DEFAULT 0,
+  balance_type TEXT DEFAULT 'CR', -- CR for credit, DR for debit
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Products Table
-CREATE TABLE IF NOT EXISTS products (
+-- Categories for products/services
+CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  product_code TEXT UNIQUE,
+  name TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL, -- 'product' or 'service'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Products/services table
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id TEXT PRIMARY KEY, -- Custom format e.g. IT001
   name TEXT NOT NULL,
   description TEXT,
-  category TEXT,
+  category_id INTEGER,
+  type TEXT NOT NULL, -- 'product' or 'service'
   purchase_price REAL DEFAULT 0,
-  selling_price REAL DEFAULT 0,
-  stock_quantity INTEGER DEFAULT 0,
-  reorder_level INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  sale_price REAL DEFAULT 0,
+  stock_quantity REAL DEFAULT 0,
+  unit TEXT DEFAULT 'pcs',
+  is_taxable INTEGER DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
--- Sales Invoices Table
-CREATE TABLE IF NOT EXISTS sales_invoices (
+-- Transaction types
+CREATE TABLE IF NOT EXISTS transaction_types (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  invoice_number TEXT UNIQUE,
-  customer_id INTEGER,
-  invoice_date TEXT,
-  due_date TEXT,
-  total_amount REAL DEFAULT 0,
-  discount_amount REAL DEFAULT 0,
-  tax_amount REAL DEFAULT 0,
-  grand_total REAL DEFAULT 0,
-  paid_amount REAL DEFAULT 0,
-  balance_due REAL DEFAULT 0,
-  status TEXT DEFAULT 'pending',
-  notes TEXT,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime')),
-  FOREIGN KEY (customer_id) REFERENCES customers(id)
+  name TEXT NOT NULL UNIQUE,
+  code TEXT NOT NULL UNIQUE, -- e.g. SALE, PURC, PYMT, RCPT
+  affects_inventory INTEGER DEFAULT 0,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Sales Invoice Items Table
-CREATE TABLE IF NOT EXISTS sales_invoice_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  invoice_id INTEGER,
-  product_id INTEGER,
-  quantity INTEGER DEFAULT 0,
-  unit_price REAL DEFAULT 0,
-  discount_percent REAL DEFAULT 0,
-  tax_percent REAL DEFAULT 0,
-  total_amount REAL DEFAULT 0,
-  FOREIGN KEY (invoice_id) REFERENCES sales_invoices(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id)
-);
+-- Insert default transaction types
+INSERT INTO transaction_types (name, code, affects_inventory, description) VALUES
+('Sale', 'SALE', 1, 'Sale of products or services'),
+('Purchase', 'PURC', 1, 'Purchase of products or services'),
+('Payment', 'PYMT', 0, 'Payment to supplier'),
+('Receipt', 'RCPT', 0, 'Receipt from customer'),
+('Journal', 'JRNL', 0, 'Journal entry');
 
--- Purchase Invoices Table
-CREATE TABLE IF NOT EXISTS purchase_invoices (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  invoice_number TEXT UNIQUE,
-  supplier_id INTEGER,
-  invoice_date TEXT,
-  due_date TEXT,
-  total_amount REAL DEFAULT 0,
-  discount_amount REAL DEFAULT 0,
-  tax_amount REAL DEFAULT 0,
-  grand_total REAL DEFAULT 0,
-  paid_amount REAL DEFAULT 0,
-  balance_due REAL DEFAULT 0,
-  status TEXT DEFAULT 'pending',
-  notes TEXT,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime')),
-  FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
-);
-
--- Purchase Invoice Items Table
-CREATE TABLE IF NOT EXISTS purchase_invoice_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  invoice_id INTEGER,
-  product_id INTEGER,
-  quantity INTEGER DEFAULT 0,
-  unit_price REAL DEFAULT 0,
-  discount_percent REAL DEFAULT 0,
-  tax_percent REAL DEFAULT 0,
-  total_amount REAL DEFAULT 0,
-  FOREIGN KEY (invoice_id) REFERENCES purchase_invoices(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id)
-);
-
--- Payments Table
-CREATE TABLE IF NOT EXISTS payments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  payment_number TEXT UNIQUE,
-  payment_date TEXT,
-  payment_type TEXT,
+-- Transactions table (header)
+CREATE TABLE IF NOT EXISTS transactions (
+  id TEXT PRIMARY KEY, -- Custom format e.g. INV001
+  transaction_type TEXT NOT NULL, -- SALE, PURC, PYMT, RCPT, JRNL
+  date TEXT NOT NULL, -- YYYY-MM-DD
+  reference TEXT,
+  party_type TEXT, -- 'customer' or 'supplier'
+  party_id TEXT, -- Customer or supplier ID
   amount REAL DEFAULT 0,
-  reference_number TEXT,
+  tax_amount REAL DEFAULT 0,
+  discount_amount REAL DEFAULT 0,
+  total_amount REAL DEFAULT 0,
+  payment_method TEXT,
+  payment_date TEXT, -- YYYY-MM-DD, for credit transactions
+  due_date TEXT, -- YYYY-MM-DD, calculated from payment_date + credit_days
+  status TEXT DEFAULT 'pending', -- pending, paid, partial, cancelled
   notes TEXT,
-  related_to TEXT, -- 'customer' or 'supplier'
-  related_id INTEGER,
-  invoice_id INTEGER,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (party_id) REFERENCES customers(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (party_id) REFERENCES suppliers(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- Daily Cash Transactions
+-- Transaction details (line items)
+CREATE TABLE IF NOT EXISTS transaction_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  transaction_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  description TEXT,
+  quantity REAL DEFAULT 0,
+  unit_price REAL DEFAULT 0,
+  discount_percent REAL DEFAULT 0,
+  tax_percent REAL DEFAULT 0,
+  amount REAL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- Payments/receipts
+CREATE TABLE IF NOT EXISTS payment_receipts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  transaction_id TEXT NOT NULL,
+  amount REAL DEFAULT 0,
+  payment_method TEXT,
+  reference TEXT,
+  date TEXT NOT NULL, -- YYYY-MM-DD
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Daily cash/bank transactions
 CREATE TABLE IF NOT EXISTS daily_transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  transaction_date TEXT,
-  transaction_type TEXT, -- 'sales', 'expense', 'transfer', etc.
-  description TEXT,
+  date TEXT NOT NULL, -- YYYY-MM-DD
+  transaction_type TEXT NOT NULL, -- income, expense, transfer
   amount REAL DEFAULT 0,
-  reference_number TEXT,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  account_from TEXT, -- cash, bank
+  account_to TEXT, -- used for transfers
+  category TEXT,
+  description TEXT,
+  reference TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create a script to create initial admin user
-CREATE TABLE IF NOT EXISTS users (
+-- User activity log
+CREATE TABLE IF NOT EXISTS activity_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE,
-  password_hash TEXT,
-  full_name TEXT,
-  role TEXT DEFAULT 'user',
-  is_active INTEGER DEFAULT 1,
-  last_login TEXT,
-  created_at TEXT DEFAULT (datetime('now', 'localtime')),
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  user_id TEXT DEFAULT 'admin',
+  action TEXT NOT NULL,
+  entity_type TEXT,
+  entity_id TEXT,
+  details TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default admin user (username: admin, password: admin)
-INSERT OR IGNORE INTO users (username, password_hash, full_name, role) 
-VALUES ('admin', '$2a$10$yfZcJ4R7NXLu7VN7tJ5qNu.d9B6mwph2Nl6z6XBQZn6xOSYqV9hwe', 'Administrator', 'admin');
+-- Create triggers to update the updated_at fields automatically
+CREATE TRIGGER IF NOT EXISTS update_settings_timestamp AFTER UPDATE ON settings
+BEGIN
+  UPDATE settings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
 
--- Settings table
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT,
-  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
-);
+CREATE TRIGGER IF NOT EXISTS update_currencies_timestamp AFTER UPDATE ON currencies
+BEGIN
+  UPDATE currencies SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
 
--- Insert default settings
-INSERT OR IGNORE INTO settings (key, value) VALUES 
-('company_name', 'VYC Accounting'),
-('company_address', ''),
-('company_phone', ''),
-('company_email', ''),
-('company_tax_number', ''),
-('currency_symbol', 'Rs'),
-('fiscal_year_start', '07-16'), -- July 16 (Shrawan 1)
-('create_backup_reminder_days', '7');
+CREATE TRIGGER IF NOT EXISTS update_customers_timestamp AFTER UPDATE ON customers
+BEGIN
+  UPDATE customers SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_suppliers_timestamp AFTER UPDATE ON suppliers
+BEGIN
+  UPDATE suppliers SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_categories_timestamp AFTER UPDATE ON categories
+BEGIN
+  UPDATE categories SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_inventory_items_timestamp AFTER UPDATE ON inventory_items
+BEGIN
+  UPDATE inventory_items SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_transaction_types_timestamp AFTER UPDATE ON transaction_types
+BEGIN
+  UPDATE transaction_types SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_transactions_timestamp AFTER UPDATE ON transactions
+BEGIN
+  UPDATE transactions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_transaction_items_timestamp AFTER UPDATE ON transaction_items
+BEGIN
+  UPDATE transaction_items SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_payment_receipts_timestamp AFTER UPDATE ON payment_receipts
+BEGIN
+  UPDATE payment_receipts SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_daily_transactions_timestamp AFTER UPDATE ON daily_transactions
+BEGIN
+  UPDATE daily_transactions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_name ON inventory_items(name);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_category ON inventory_items(category_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_party ON transactions(party_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_transaction_items_transaction ON transaction_items(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payment_receipts_transaction ON payment_receipts(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_daily_transactions_date ON daily_transactions(date);
+CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action);
+CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id);

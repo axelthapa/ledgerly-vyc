@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import {
   CreditCard,
@@ -16,10 +16,44 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import { useNavigate } from "react-router-dom";
 import DailyTransactionDialog from "@/components/daily-transactions/DailyTransactionDialog";
 import TransactionLog from "@/components/daily-transactions/TransactionLog";
+import PaymentAlerts from "@/components/dashboard/PaymentAlerts";
+import { getDashboardSummary } from "@/utils/report-utils";
+import { toast } from "@/components/ui/toast-utils";
+import { formatCurrency } from "@/utils/currency";
 
 const Dashboard = () => {
   const greeting = getGreeting();
   const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = useState<any>({
+    monthlySales: 0,
+    monthlyPurchases: 0,
+    totalReceivables: 0,
+    totalPayables: 0,
+    salesGrowth: 0,
+    purchasesGrowth: 0
+  });
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const result = await getDashboardSummary();
+        
+        if (result.success && result.data) {
+          setDashboardData(result.data);
+        } else {
+          console.error('Failed to fetch dashboard data:', result.error);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
   
   const handleCustomerClick = (customerId: string) => {
     navigate(`/customers/${customerId}`);
@@ -46,35 +80,37 @@ const Dashboard = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Sales"
-            value="Rs 1,25,000.00"
+            value={`रू ${formatCurrency(dashboardData.monthlySales)}`}
             description="This Month"
             icon={CreditCard}
-            trend={{ value: 12, isPositive: true }}
+            trend={{ value: dashboardData.salesGrowth, isPositive: dashboardData.salesGrowth >= 0 }}
             navigateTo="/analytics?tab=sales"
+            isLoading={loading}
           />
           <StatCard
             title="Total Purchases"
-            value="Rs 85,000.00"
+            value={`रू ${formatCurrency(dashboardData.monthlyPurchases)}`}
             description="This Month"
             icon={ShoppingCart}
-            trend={{ value: 5, isPositive: false }}
+            trend={{ value: dashboardData.purchasesGrowth, isPositive: dashboardData.purchasesGrowth >= 0 }}
             navigateTo="/analytics?tab=purchases"
+            isLoading={loading}
           />
           <StatCard
             title="Total Receivable"
-            value="Rs 45,000.00"
+            value={`रू ${formatCurrency(dashboardData.totalReceivables)}`}
             description="Outstanding"
             icon={DollarSign}
-            trend={{ value: 18, isPositive: true }}
             navigateTo="/analytics?tab=receivables"
+            isLoading={loading}
           />
           <StatCard
             title="Total Payable"
-            value="Rs 32,000.00"
+            value={`रू ${formatCurrency(dashboardData.totalPayables)}`}
             description="Outstanding"
             icon={DollarSign}
-            trend={{ value: 10, isPositive: false }}
             navigateTo="/analytics?tab=payables"
+            isLoading={loading}
           />
         </div>
         
@@ -112,7 +148,7 @@ const Dashboard = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium">Rs 15,000.00</p>
+                            <p className="text-sm font-medium">रू {formatCurrency(15000)}</p>
                             <p className="text-xs text-vyc-success">CR</p>
                           </div>
                         </div>
@@ -148,7 +184,7 @@ const Dashboard = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium">Rs 25,000.00</p>
+                            <p className="text-sm font-medium">रू {formatCurrency(25000)}</p>
                             <p className="text-xs text-vyc-error">DR</p>
                           </div>
                         </div>
@@ -168,8 +204,10 @@ const Dashboard = () => {
             </div>
           </div>
           
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-6">
             <DateTimeDisplay />
+            
+            <PaymentAlerts />
           </div>
         </div>
       </div>
