@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StatCardProps {
   title: string;
@@ -16,6 +17,7 @@ interface StatCardProps {
   };
   className?: string;
   navigateTo?: string;  // Add navigation path
+  isLoading?: boolean;  // Add loading state
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -26,6 +28,7 @@ const StatCard: React.FC<StatCardProps> = ({
   trend,
   className,
   navigateTo,
+  isLoading = false,
 }) => {
   const navigate = useNavigate();
   
@@ -44,11 +47,15 @@ const StatCard: React.FC<StatCardProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <h3 className="text-2xl font-bold mt-1">{value}</h3>
+            {isLoading ? (
+              <Skeleton className="h-8 w-32 mt-1" />
+            ) : (
+              <h3 className="text-2xl font-bold mt-1">{value}</h3>
+            )}
             {description && (
               <p className="text-xs text-muted-foreground mt-1">{description}</p>
             )}
-            {trend && (
+            {trend && !isLoading && (
               <div className="flex items-center mt-2">
                 <span
                   className={cn(
@@ -60,6 +67,9 @@ const StatCard: React.FC<StatCardProps> = ({
                 </span>
                 <span className="text-xs text-muted-foreground ml-1">from last month</span>
               </div>
+            )}
+            {trend && isLoading && (
+              <Skeleton className="h-4 w-24 mt-2" />
             )}
           </div>
           <div className="rounded-full p-2 bg-primary/10">

@@ -28,6 +28,56 @@ export function getGreeting(): string {
   }
 }
 
+// Format Nepali date - returns English format with BS year
+export function formatNepaliDate(date: Date): string {
+  // This is a simplified implementation
+  // In a real app, you would use a proper Nepali date conversion library
+  const engDate = date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  // Add BS year (approximation for demo)
+  const engYear = date.getFullYear();
+  const bsYear = engYear + 56; // Rough approximation
+  
+  return `${engDate} (BS ${bsYear})`;
+}
+
+// Format Nepali date in Nepali format
+export function formatNepaliDateNP(date: Date): string {
+  // This is a simplified implementation
+  // In a real app, you would use a proper Nepali date conversion library
+  const engYear = date.getFullYear();
+  const engMonth = date.getMonth() + 1;
+  const engDay = date.getDate();
+  
+  // Rough conversion to BS (for demo purposes only)
+  const bsYear = engYear + 56;
+  const bsMonth = engMonth; // Simplified
+  const bsDay = engDay; // Simplified
+  
+  // Nepali month names
+  const nepaliMonths = [
+    'बैशाख', 'जेष्ठ', 'असार', 'श्रावण', 
+    'भाद्र', 'असोज', 'कार्तिक', 'मंसिर', 
+    'पुष', 'माघ', 'फाल्गुन', 'चैत्र'
+  ];
+  
+  // Get Nepali month name
+  const nepaliMonth = nepaliMonths[bsMonth - 1];
+  
+  // Convert numbers to Nepali digits
+  const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+  
+  const toNepaliNumeral = (num: number): string => {
+    return num.toString().split('').map(digit => nepaliDigits[parseInt(digit)]).join('');
+  };
+  
+  return `${nepaliMonth} ${toNepaliNumeral(bsDay)}, ${toNepaliNumeral(bsYear)}`;
+}
+
 // Calculate relative time between two dates
 export function getRelativeTimeFromDates(current: Date, target: Date): string {
   // Calculate the difference in milliseconds
