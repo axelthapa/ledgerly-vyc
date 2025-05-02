@@ -1,15 +1,15 @@
 
-import React, { useState, useEffect } from "react";
-import { Bell, ChevronDown, Menu, Moon, Settings, Sun, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { formatNepaliDate, getGreeting } from "@/utils/nepali-date";
+  Bell,
+  Menu,
+  User
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import LanguageSwitch from "../language/LanguageSwitch";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getCompanyAbbreviation } from "@/utils/company-utils";
 
 interface TopBarProps {
   sidebarOpen: boolean;
@@ -18,94 +18,78 @@ interface TopBarProps {
 }
 
 const TopBar: React.FC<TopBarProps> = ({ sidebarOpen, toggleSidebar, onLogout }) => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [darkMode, setDarkMode] = useState(false);
-  
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const [companyAbbr, setCompanyAbbr] = useState('VYC');
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    
-    return () => clearInterval(timer);
+    const loadCompanyAbbr = async () => {
+      try {
+        const abbr = await getCompanyAbbreviation();
+        setCompanyAbbr(abbr);
+      } catch (error) {
+        console.error('Failed to load company abbreviation:', error);
+      }
+    };
+
+    loadCompanyAbbr();
   }, []);
-  
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    // In a real app, you would apply dark mode classes to the HTML element
+
+  const goToSettings = () => {
+    navigate('/settings');
   };
-  
-  const currentGreeting = getGreeting();
-  const formattedDate = formatNepaliDate(currentTime);
-  const formattedTime = currentTime.toLocaleTimeString();
-  
+
+  const handleNotificationsClick = () => {
+    toast({
+      title: "Notifications",
+      description: "You have no new notifications",
+    });
+  };
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-4 shadow-sm">
-      <div className="flex items-center">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-          <Menu className="h-5 w-5" />
-        </Button>
-        <div className="ml-4">
-          <h1 className="text-lg font-medium">VYC Accounting System</h1>
-          <p className="text-sm text-gray-500">{currentGreeting}, Administrator</p>
+    <header className="h-16 bg-vyc-primary text-white shadow-md fixed top-0 w-full z-10">
+      <div className="flex items-center justify-between h-full px-4">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-md hover:bg-vyc-primary/70 transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="hidden md:block">
+            <h1 className="text-xl font-bold">{companyAbbr} - {t('Demo Trial Application')}</h1>
+          </div>
         </div>
-      </div>
-      
-      <div className="flex items-center space-x-4">
-        {/* Date and Time */}
-        <div className="hidden md:block text-right">
-          <div className="text-lg font-semibold">{formattedTime}</div>
-          <div className="text-sm text-gray-500">{formattedDate}</div>
+
+        <div className="flex items-center space-x-2">
+          {/* Language switch */}
+          <LanguageSwitch />
+
+          {/* Notifications */}
+          <button
+            onClick={handleNotificationsClick}
+            className="p-2 rounded-md hover:bg-vyc-primary/70 transition-colors"
+          >
+            <Bell className="h-5 w-5" />
+          </button>
+
+          {/* User menu */}
+          <button
+            onClick={goToSettings}
+            className="p-2 rounded-md hover:bg-vyc-primary/70 transition-colors"
+          >
+            <User className="h-5 w-5" />
+          </button>
+
+          {/* Logout button for small screens */}
+          <button
+            onClick={onLogout}
+            className="md:hidden p-2 bg-vyc-primary/80 rounded-md hover:bg-vyc-primary/60 transition-colors"
+          >
+            {t('Logout')}
+          </button>
         </div>
-        
-        {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <div className="flex items-center justify-between p-4">
-              <span className="font-medium">Notifications</span>
-              <Button variant="ghost" size="sm">
-                Mark all as read
-              </Button>
-            </div>
-            <DropdownMenuSeparator />
-            <div className="p-4 text-center text-sm text-gray-500">
-              No new notifications
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        {/* Theme Toggle */}
-        <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
-          {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
-        
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              <span className="hidden md:inline">Administrator</span>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout}>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   );

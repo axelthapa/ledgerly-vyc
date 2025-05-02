@@ -20,10 +20,15 @@ import PaymentAlerts from "@/components/dashboard/PaymentAlerts";
 import { getDashboardSummary } from "@/utils/report-utils";
 import { toast } from "@/components/ui/toast-utils";
 import { formatCurrency } from "@/utils/currency";
+import { useLanguage } from "@/contexts/LanguageContext";
+import QuoteOfTheDay from "@/components/dashboard/QuoteOfTheDay";
+import { getCompanyAbbreviation } from "@/utils/company-utils";
 
 const Dashboard = () => {
   const greeting = getGreeting();
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const [companyAbbr, setCompanyAbbr] = useState('');
   const [dashboardData, setDashboardData] = useState<any>({
     monthlySales: 0,
     monthlyPurchases: 0,
@@ -52,7 +57,17 @@ const Dashboard = () => {
       }
     };
     
+    const loadCompanyAbbr = async () => {
+      try {
+        const abbr = await getCompanyAbbreviation();
+        setCompanyAbbr(abbr);
+      } catch (error) {
+        console.error('Failed to load company abbreviation:', error);
+      }
+    };
+    
     fetchDashboardData();
+    loadCompanyAbbr();
   }, []);
   
   const handleCustomerClick = (customerId: string) => {
@@ -68,10 +83,10 @@ const Dashboard = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{greeting}, Administrator</h1>
-            <p className="text-muted-foreground">
-              Here's what's happening with your business today.
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {t(greeting)}, {companyAbbr}
+            </h1>
+            <QuoteOfTheDay />
           </div>
           
           <DailyTransactionDialog />
@@ -79,35 +94,35 @@ const Dashboard = () => {
         
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Total Sales"
+            title={t("Total Sales")}
             value={`रू ${formatCurrency(dashboardData.monthlySales)}`}
-            description="This Month"
+            description={t("This Month")}
             icon={CreditCard}
             trend={{ value: dashboardData.salesGrowth, isPositive: dashboardData.salesGrowth >= 0 }}
             navigateTo="/analytics?tab=sales"
             isLoading={loading}
           />
           <StatCard
-            title="Total Purchases"
+            title={t("Total Purchases")}
             value={`रू ${formatCurrency(dashboardData.monthlyPurchases)}`}
-            description="This Month"
+            description={t("This Month")}
             icon={ShoppingCart}
             trend={{ value: dashboardData.purchasesGrowth, isPositive: dashboardData.purchasesGrowth >= 0 }}
             navigateTo="/analytics?tab=purchases"
             isLoading={loading}
           />
           <StatCard
-            title="Total Receivable"
+            title={t("Total Receivable")}
             value={`रू ${formatCurrency(dashboardData.totalReceivables)}`}
-            description="Outstanding"
+            description={t("Outstanding")}
             icon={DollarSign}
             navigateTo="/analytics?tab=receivables"
             isLoading={loading}
           />
           <StatCard
-            title="Total Payable"
+            title={t("Total Payable")}
             value={`रू ${formatCurrency(dashboardData.totalPayables)}`}
-            description="Outstanding"
+            description={t("Outstanding")}
             icon={DollarSign}
             navigateTo="/analytics?tab=payables"
             isLoading={loading}
@@ -118,13 +133,13 @@ const Dashboard = () => {
           <div className="md:col-span-5">
             <Tabs defaultValue="customers">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="customers">Recent Customers</TabsTrigger>
-                <TabsTrigger value="suppliers">Recent Suppliers</TabsTrigger>
+                <TabsTrigger value="customers">{t('Recent Customers')}</TabsTrigger>
+                <TabsTrigger value="suppliers">{t('Recent Suppliers')}</TabsTrigger>
               </TabsList>
               <TabsContent value="customers" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Customers</CardTitle>
+                    <CardTitle>{t('Recent Customers')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -140,10 +155,10 @@ const Dashboard = () => {
                             </div>
                             <div>
                               <h4 className="text-sm font-medium">
-                                Customer {i + 1}
+                                {t('Customer')} {i + 1}
                               </h4>
                               <p className="text-xs text-muted-foreground">
-                                Last transaction: 3 days ago
+                                {t('Last transaction')}: 3 {t('days ago')}
                               </p>
                             </div>
                           </div>
@@ -160,7 +175,7 @@ const Dashboard = () => {
               <TabsContent value="suppliers" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Suppliers</CardTitle>
+                    <CardTitle>{t('Recent Suppliers')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -176,10 +191,10 @@ const Dashboard = () => {
                             </div>
                             <div>
                               <h4 className="text-sm font-medium">
-                                Supplier {i + 1}
+                                {t('Supplier')} {i + 1}
                               </h4>
                               <p className="text-xs text-muted-foreground">
-                                Last transaction: 5 days ago
+                                {t('Last transaction')}: 5 {t('days ago')}
                               </p>
                             </div>
                           </div>

@@ -1,362 +1,236 @@
 
 import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast-utils";
-import { Eye, EyeOff, Lock, User, KeyRound, Calendar, Clock } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { formatNepaliDate, formatNepaliDateNP } from "@/utils/nepali-date";
+import { getAppInfo, dbQuery, dbUpdate } from "@/utils/electron-utils";
 
-// Mock admin users
-const ADMIN_USERS = [
-  { username: "vision", password: "vision@123" },
-  { username: "admin", password: "admin123" },
-];
-
-const LoginForm = () => {
+const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [verificationKey, setVerificationKey] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
-  const [validationKey, setValidationKey] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginAttempt, setLoginAttempt] = useState(false);
-  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
-  const [isValidationKeyGenerated, setIsValidationKeyGenerated] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [showLoginForm, setShowLoginForm] = useState(false);
-  const [keySequence, setKeySequence] = useState("");
-  
-  // Generate random validation key without 0
-  const generateValidationKey = () => {
-    const digits = "123456789"; // Exclude 0
-    let key = "";
-    for (let i = 0; i < 4; i++) {
-      key += digits.charAt(Math.floor(Math.random() * digits.length));
-    }
-    setValidationKey(key);
-    setIsValidationKeyGenerated(true);
-    return key;
-  };
-  
-  // Convert number to corresponding letters (1=a, 2=b, etc.)
-  const convertToLetters = (key: string) => {
-    return key
-      .split("")
-      .map(digit => String.fromCharCode(96 + parseInt(digit)))
-      .join("");
-  };
-  
-  // Update time every second
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [appInfo, setAppInfo] = useState<any>(null);
+  const [loginPattern, setLoginPattern] = useState("VYC");
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    // Check if this is the first run
+    const checkFirstRun = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get app info
+        const info = getAppInfo();
+        setAppInfo(info);
+        
+        // Check if there are any users in the database
+        const result = await dbQuery('SELECT COUNT(*) as count FROM users');
+        
+        if (result.success && result.data && result.data[0].count === 0) {
+          setIsFirstTimeSetup(true);
+        } else {
+          // Load login pattern
+          const patternResult = await dbQuery('SELECT value FROM settings WHERE key = ?', ['login_pattern']);
+          
+          if (patternResult.success && patternResult.data && patternResult.data.length > 0) {
+            setLoginPattern(patternResult.data[0].value);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking first run:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    return () => clearInterval(timer);
+    checkFirstRun();
   }, []);
-  
-  // Add keyboard listener to detect "VYC" sequence
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const newSequence = keySequence + e.key.toUpperCase();
-      setKeySequence(newSequence.slice(-3)); // Keep only the last 3 characters
-    };
-    
-    window.addEventListener("keydown", handleKeyDown);
-    
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [keySequence]);
-  
-  // Check for "VYC" sequence
-  useEffect(() => {
-    if (keySequence === "VYC") {
-      // Generate verification key right when login form appears
-      const key = generateValidationKey();
-      console.log("Generated verification key:", key);
-      console.log("Expected input:", convertToLetters(key));
-      setShowLoginForm(true);
-    }
-  }, [keySequence]);
-  
-  const handleLogin = (e: React.FormEvent) => {
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate username and password
-    const user = ADMIN_USERS.find(user => user.username.toLowerCase() === username.toLowerCase());
-    
-    if (!user) {
-      toast.error("Invalid username. Please try again.");
+    if (!username || !password) {
+      toast.error("Please enter both username and password");
       return;
     }
     
-    if (user.password !== password) {
-      toast.error("Invalid password. Please try again.");
+    // If username doesn't match the login pattern, show error
+    if (username !== loginPattern) {
+      toast.error("Invalid username or password");
       return;
     }
     
-    // Verify the validation key
-    const expectedKey = convertToLetters(validationKey);
-    
-    if (verificationKey.toLowerCase() !== expectedKey) {
-      toast.error("Incorrect verification key. Please try again.");
-      return;
+    try {
+      const result = await dbQuery(
+        'SELECT * FROM users WHERE username = ? AND password = ?',
+        [username, password]
+      );
+      
+      if (result.success && result.data && result.data.length > 0) {
+        toast.success("Login successful");
+        localStorage.setItem("isLoggedIn", "true");
+        window.location.href = "/dashboard";
+      } else {
+        toast.error("Invalid username or password");
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error("An error occurred during login");
     }
-    
-    // Login successful
-    toast.success("Login successful! Redirecting to dashboard...");
-    
-    // Save username in localStorage if "Remember Me" is checked
-    if (rememberMe) {
-      localStorage.setItem("rememberedUsername", username);
-    } else {
-      localStorage.removeItem("rememberedUsername");
-    }
-    
-    // Set login state
-    localStorage.setItem("isLoggedIn", "true");
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 1500);
-  };
-  
-  // Load remembered username if available
-  useEffect(() => {
-    const savedUsername = localStorage.getItem("rememberedUsername");
-    if (savedUsername) {
-      setUsername(savedUsername);
-      setRememberMe(true);
-    }
-    
-    // Check if user is already logged in (redirect should happen in Index.tsx)
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (isLoggedIn) {
-      setShowLoginForm(false);
-    }
-  }, []);
-  
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-  
-  const handleExit = () => {
-    setIsExitDialogOpen(true);
-  };
-  
-  const confirmExit = () => {
-    // In a real app, you might want to clear any sensitive data
-    window.close();
-    // Fallback if window.close() doesn't work (some browsers block it)
-    window.location.href = "about:blank";
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
+  const handleSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newUsername || !newPassword || !confirmPassword) {
+      toast.error("Please fill all fields");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    
+    try {
+      // Create admin user
+      const result = await dbUpdate(
+        'INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)',
+        [newUsername, newPassword, 'Administrator', 'admin']
+      );
+      
+      if (!result.success) {
+        toast.error("Failed to create user: " + result.error);
+        return;
+      }
+      
+      // Save login pattern
+      await dbUpdate(
+        'INSERT INTO settings (key, value) VALUES (?, ?)',
+        ['login_pattern', loginPattern]
+      );
+      
+      toast.success("Setup completed successfully");
+      setIsFirstTimeSetup(false);
+    } catch (error) {
+      console.error('Setup error:', error);
+      toast.error("An error occurred during setup");
+    }
   };
-  
-  const formatEnglishDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-  
-  if (!showLoginForm) {
+
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
-        <Card className="w-full max-w-md shadow-xl">
-          <CardContent className="p-10 text-center">
-            <div className="flex justify-center mb-2">
-              <div className="h-20 w-20 rounded-full bg-vyc-accent flex items-center justify-center">
-                <span className="text-4xl font-bold text-black">VYC</span>
-              </div>
-            </div>
-            
-            {/* Date and Time Display - Only show this initially */}
-            <div className="mt-4 text-sm border rounded-lg p-2 bg-gray-50">
-              <div className="flex items-center justify-center gap-2 font-bold">
-                <Clock className="h-4 w-4" /> 
-                {formatTime(currentTime)}
-              </div>
-              <div className="flex items-center justify-center gap-1 mt-1">
-                <Calendar className="h-4 w-4" />
-                <span>{formatEnglishDate(currentTime)}</span>
-              </div>
-              <div className="mt-1 font-medium">
-                {formatNepaliDateNP(currentTime)}
-              </div>
-            </div>
-          </CardContent>
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <Card className="w-[350px]">
+          <CardHeader className="text-center">
+            <CardTitle>Loading...</CardTitle>
+          </CardHeader>
         </Card>
       </div>
     );
   }
-  
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-vyc-primary to-vyc-primary-dark p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-2">
-            <div className="h-20 w-20 rounded-full bg-vyc-accent flex items-center justify-center">
-              <span className="text-4xl font-bold text-black">VYC</span>
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Login to VYC</CardTitle>
-          
-          {/* Date and Time Display */}
-          <div className="mt-2 text-sm border rounded-lg p-2 bg-gray-50">
-            <div className="flex items-center justify-center gap-2 font-bold">
-              <Clock className="h-4 w-4" /> 
-              {formatTime(currentTime)}
-            </div>
-            <div className="flex items-center justify-center gap-1 mt-1">
-              <Calendar className="h-4 w-4" />
-              <span>{formatEnglishDate(currentTime)}</span>
-            </div>
-            <div className="mt-1 font-medium">
-              {formatNepaliDateNP(currentTime)}
-            </div>
-          </div>
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <Card className="w-[350px]">
+        <CardHeader className="text-center">
+          <div className="text-2xl font-bold mb-2">VYC Accounting</div>
+          <CardDescription>Demo Trial Application</CardDescription>
+          <CardDescription>
+            Version: {appInfo?.version || '1.0.0'} ({appInfo?.platform || 'unknown'})
+          </CardDescription>
         </CardHeader>
         
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <div className="relative">
-                <div className="absolute left-3 top-3 text-gray-400">
-                  <User size={18} />
-                </div>
+        {isFirstTimeSetup ? (
+          // First-time setup form
+          <form onSubmit={handleSetup}>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="login-pattern">Login Pattern</Label>
+                <Input
+                  id="login-pattern"
+                  placeholder="Enter login pattern"
+                  value={loginPattern}
+                  onChange={(e) => setLoginPattern(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will be used as the username to log in
+                </p>
+              </div>
+              
+              <div className="space-y-1">
+                <Label htmlFor="new-username">Admin Username</Label>
+                <Input
+                  id="new-username"
+                  placeholder="Enter admin username"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label htmlFor="new-password">Admin Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Enter password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            </CardContent>
+            
+            <CardFooter>
+              <Button type="submit" className="w-full">Complete Setup</Button>
+            </CardFooter>
+          </form>
+        ) : (
+          // Regular login form
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
-                  placeholder="Enter your username"
+                  placeholder="Enter username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="pl-10"
-                  required
-                  autoFocus
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <div className="absolute left-3 top-3 text-gray-400">
-                  <Lock size={18} />
-                </div>
+              
+              <div className="space-y-1">
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  type="password"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-3 text-gray-400"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="verificationKey">Verification Key</Label>
-                <span className="text-xs bg-vyc-accent text-black px-2 py-1 rounded font-mono">
-                  Key: {validationKey}
-                </span>
-              </div>
-              <div className="relative">
-                <div className="absolute left-3 top-3 text-gray-400">
-                  <KeyRound size={18} />
-                </div>
-                <Input
-                  id="verificationKey"
-                  placeholder="Enter verification key"
-                  value={verificationKey}
-                  onChange={(e) => setVerificationKey(e.target.value)}
-                  className="pl-10"
-                  required
                 />
               </div>
-            </div>
+            </CardContent>
             
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(!!checked)}
-              />
-              <label
-                htmlFor="remember"
-                className="text-sm font-medium leading-none cursor-pointer"
-              >
-                Remember me
-              </label>
-            </div>
-            
-            <div className="flex space-x-2">
-              <Button type="submit" className="w-full bg-vyc-primary hover:bg-vyc-primary-dark">
-                Login
-              </Button>
-              <AlertDialog open={isExitDialogOpen} onOpenChange={setIsExitDialogOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button type="button" variant="outline" onClick={handleExit}>
-                    Exit
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to exit?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      You will be logged out of the application.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmExit} className="bg-red-600 hover:bg-red-700">
-                      Yes, Exit
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+            <CardFooter>
+              <Button type="submit" className="w-full">Log In</Button>
+            </CardFooter>
           </form>
-        </CardContent>
-        <CardFooter className="flex flex-col">
-          <p className="text-xs text-center text-gray-500 mt-2">
-            VYC Accounting System © {new Date().getFullYear()}
-          </p>
-        </CardFooter>
+        )}
       </Card>
     </div>
   );

@@ -18,6 +18,14 @@ contextBridge.exposeInMainWorld('electron', {
     restore: () => ipcRenderer.invoke('db-restore')
   },
   
+  // Event handling
+  onShowBackupReminder: (callback) => {
+    ipcRenderer.on('show-backup-reminder', callback);
+  },
+  removeShowBackupReminder: (callback) => {
+    ipcRenderer.removeListener('show-backup-reminder', callback);
+  },
+  
   // App info
   getAppInfo: () => {
     return {

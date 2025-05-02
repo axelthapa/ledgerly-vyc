@@ -8,6 +8,17 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Users table for application login
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  full_name TEXT,
+  role TEXT DEFAULT 'user', -- 'admin' or 'user'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Currencies table
 CREATE TABLE IF NOT EXISTS currencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,7 +100,7 @@ CREATE TABLE IF NOT EXISTS transaction_types (
 );
 
 -- Insert default transaction types
-INSERT INTO transaction_types (name, code, affects_inventory, description) VALUES
+INSERT OR IGNORE INTO transaction_types (name, code, affects_inventory, description) VALUES
 ('Sale', 'SALE', 1, 'Sale of products or services'),
 ('Purchase', 'PURC', 1, 'Purchase of products or services'),
 ('Payment', 'PYMT', 0, 'Payment to supplier'),
@@ -165,6 +176,30 @@ CREATE TABLE IF NOT EXISTS daily_transactions (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Service management table for repair shops
+CREATE TABLE IF NOT EXISTS services (
+  id TEXT PRIMARY KEY, -- Custom format e.g. SV001
+  customer_id TEXT, -- Link to customers table
+  customer_name TEXT NOT NULL,
+  device_type TEXT NOT NULL, -- mobile, laptop, etc.
+  device_model TEXT,
+  device_serial TEXT,
+  problem_description TEXT NOT NULL,
+  service_date TEXT NOT NULL, -- YYYY-MM-DD
+  is_warranty INTEGER DEFAULT 0, -- 0 = no, 1 = yes
+  technician TEXT,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending, in_progress, completed, cancelled
+  diagnosis TEXT,
+  repair_notes TEXT,
+  parts_used TEXT, -- JSON string of parts used
+  estimated_cost REAL DEFAULT 0,
+  final_cost REAL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
 -- User activity log
 CREATE TABLE IF NOT EXISTS activity_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +215,11 @@ CREATE TABLE IF NOT EXISTS activity_log (
 CREATE TRIGGER IF NOT EXISTS update_settings_timestamp AFTER UPDATE ON settings
 BEGIN
   UPDATE settings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_users_timestamp AFTER UPDATE ON users
+BEGIN
+  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS update_currencies_timestamp AFTER UPDATE ON currencies
@@ -232,6 +272,11 @@ BEGIN
   UPDATE daily_transactions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
+CREATE TRIGGER IF NOT EXISTS update_services_timestamp AFTER UPDATE ON services
+BEGIN
+  UPDATE services SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
 CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
@@ -246,3 +291,23 @@ CREATE INDEX IF NOT EXISTS idx_payment_receipts_transaction ON payment_receipts(
 CREATE INDEX IF NOT EXISTS idx_daily_transactions_date ON daily_transactions(date);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action);
 CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_services_customer ON services(customer_id, customer_name);
+CREATE INDEX IF NOT EXISTS idx_services_date ON services(service_date);
+CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
+
+-- Insert default admin user
+INSERT OR IGNORE INTO users (username, password, full_name, role)
+VALUES ('admin', 'admin123', 'Administrator', 'admin');
+
+-- Insert default settings
+INSERT OR IGNORE INTO settings (key, value) VALUES ('company_name', 'VYC Accounting');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('company_address', 'Kathmandu, Nepal');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('company_phone', '+977 1234567890');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('company_email', 'info@vyc.com');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('fiscal_year', '2081/2082');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_reminder_days', '7');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('display_language', 'en');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('default_credit_days', '15');
+
+-- Initial currency
+INSERT OR IGNORE INTO currencies (code, name, symbol, is_default) VALUES ('NPR', 'Nepalese Rupee', 'रू', 1);

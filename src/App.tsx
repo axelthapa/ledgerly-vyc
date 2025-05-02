@@ -1,57 +1,62 @@
 
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Customers from "./pages/Customers";
-import CustomerDetail from "./pages/CustomerDetail";
-import Suppliers from "./pages/Suppliers";
-import SupplierDetail from "./pages/SupplierDetail";
-import Transactions from "./pages/Transactions";
-import Sales from "./pages/Sales";
-import Purchases from "./pages/Purchases";
-import Payments from "./pages/Payments";
-import Reports from "./pages/Reports";
-import Backup from "./pages/Backup";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
 
+import Dashboard from "@/pages/Dashboard";
+import Index from "@/pages/Index";
+import NotFound from "@/pages/NotFound";
+import Sales from "@/pages/Sales";
+import Purchases from "@/pages/Purchases";
+import Customers from "@/pages/Customers";
+import Suppliers from "@/pages/Suppliers";
+import CustomerDetail from "@/pages/CustomerDetail";
+import SupplierDetail from "@/pages/SupplierDetail";
+import Settings from "@/pages/Settings";
+import Reports from "@/pages/Reports";
+import Analytics from "@/pages/Analytics";
+import Transactions from "@/pages/Transactions";
+import Payments from "@/pages/Payments";
+import Backup from "@/pages/Backup";
+import Services from "@/pages/Services";
+import { LanguageProvider } from "./contexts/LanguageContext";
+import BackupReminder from "./components/backup/BackupReminder";
+
+// Create the query client
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/:customerId" element={<CustomerDetail />} />
-          <Route path="/suppliers" element={<Suppliers />} />
-          <Route path="/suppliers/:supplierId" element={<SupplierDetail />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/sales" element={<Sales />} />
-          <Route path="/sales/new" element={<Sales />} />
-          <Route path="/purchases" element={<Purchases />} />
-          <Route path="/purchases/new" element={<Purchases />} />
-          <Route path="/payments" element={<Payments />} />
-          <Route path="/payments/new" element={<Payments />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/backup" element={<Backup />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/settings" element={<Settings />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// Create the router
+const router = createBrowserRouter([
+  { path: "/", element: <Index /> },
+  { path: "/dashboard", element: <Dashboard /> },
+  { path: "/sales", element: <Sales /> },
+  { path: "/purchases", element: <Purchases /> },
+  { path: "/customers", element: <Customers /> },
+  { path: "/suppliers", element: <Suppliers /> },
+  { path: "/customers/:id", element: <CustomerDetail /> },
+  { path: "/suppliers/:id", element: <SupplierDetail /> },
+  { path: "/settings", element: <Settings /> },
+  { path: "/reports", element: <Reports /> },
+  { path: "/analytics", element: <Analytics /> },
+  { path: "/transactions", element: <Transactions /> },
+  { path: "/payments", element: <Payments /> },
+  { path: "/backup", element: <Backup /> },
+  { path: "/services", element: <Services /> },
+  
+  // Not found route
+  { path: "*", element: <NotFound /> },
+]);
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
+        <RouterProvider router={router} />
+        <Toaster />
+        <BackupReminder />
+      </LanguageProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

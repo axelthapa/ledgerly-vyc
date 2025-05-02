@@ -1,89 +1,116 @@
 
-import React from "react";
-import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import React, { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
 import {
-  BarChart3,
-  Users,
-  ShoppingCart,
+  BarChart4,
+  ChevronLeft,
   CreditCard,
-  ClipboardList,
-  Settings,
-  FileText,
-  HardDrive,
-  DollarSign,
+  FilePieChart,
   Home,
+  Receipt,
+  Settings,
+  ShoppingCart,
+  Users,
+  Wallet,
+  Wrench,
+  Database,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getCompanyAbbreviation } from "@/utils/company-utils";
 
 interface SidebarProps {
   open: boolean;
 }
 
-interface SidebarItemProps {
-  icon: React.ReactNode;
+interface NavItemProps {
+  to: string;
+  icon: React.ComponentType<any>;
   label: string;
-  href: string;
-  active?: boolean;
+  end?: boolean;
 }
 
-const SidebarItem: React.FC<SidebarItemProps> = ({
-  icon,
-  label,
-  href,
-  active = false,
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ open }) => {
+  const { t } = useLanguage();
+  const [companyAbbr, setCompanyAbbr] = useState('VYC');
+  
+  useEffect(() => {
+    const loadCompanyAbbr = async () => {
+      try {
+        const abbr = await getCompanyAbbreviation();
+        setCompanyAbbr(abbr);
+      } catch (error) {
+        console.error('Failed to load company abbreviation:', error);
+      }
+    };
+    
+    loadCompanyAbbr();
+  }, []);
+
+  const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, end }) => (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-2 px-3 py-2 rounded-md transition-colors",
+          isActive
+            ? "bg-vyc-primary text-white font-medium"
+            : "hover:bg-vyc-primary/10"
+        )
+      }
+    >
+      <Icon className="h-5 w-5" />
+      {open && <span>{t(label)}</span>}
+    </NavLink>
+  );
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    window.location.href = "/";
+  };
+
   return (
-    <Link
-      to={href}
+    <aside
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-vyc-accent",
-        active
-          ? "bg-vyc-primary-light text-vyc-accent"
-          : "text-gray-300 hover:bg-vyc-primary-light"
+        "h-[calc(100vh-4rem)] fixed top-16 bg-white border-r transition-all z-10",
+        open ? "w-64" : "w-0 md:w-16"
       )}
     >
-      {icon}
-      <span>{label}</span>
-    </Link>
-  );
-};
-
-export function Sidebar({ open }: SidebarProps) {
-  if (!open) return null;
-  
-  return (
-    <div className="fixed left-0 z-20 h-full w-64 bg-vyc-primary text-white p-4 shadow-lg transition-all">
-      <div className="flex flex-col h-full">
-        <div className="mb-8 flex items-center justify-center">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-full bg-vyc-accent flex items-center justify-center">
-              <span className="text-xl font-bold text-black">VYC</span>
-            </div>
-            <span className="text-xl font-bold">VYC Accounting</span>
-          </Link>
+      <div className={cn("h-full flex flex-col", !open && "items-center")}>
+        <div className="flex flex-col gap-1 p-4 flex-1">
+          <NavItem to="/dashboard" icon={Home} label="Dashboard" end />
+          <NavItem to="/sales" icon={Receipt} label="Sales" />
+          <NavItem to="/purchases" icon={ShoppingCart} label="Purchases" />
+          <NavItem to="/customers" icon={Users} label="Customers" />
+          <NavItem to="/suppliers" icon={Users} label="Suppliers" />
+          <NavItem to="/services" icon={Wrench} label="Services" />
+          <NavItem to="/payments" icon={Wallet} label="Payments" />
+          <NavItem to="/reports" icon={FilePieChart} label="Reports" />
+          <NavItem to="/analytics" icon={BarChart4} label="Analytics" />
+          <NavItem to="/backup" icon={Database} label="Backup" />
+          <NavItem to="/settings" icon={Settings} label="Settings" />
         </div>
-        
-        <nav className="space-y-1">
-          <SidebarItem icon={<Home size={20} />} label="Dashboard" href="/dashboard" active={true} />
-          <SidebarItem icon={<Users size={20} />} label="Customers" href="/customers" />
-          <SidebarItem icon={<ShoppingCart size={20} />} label="Suppliers" href="/suppliers" />
-          <SidebarItem icon={<CreditCard size={20} />} label="Sales" href="/sales" />
-          <SidebarItem icon={<ShoppingCart size={20} />} label="Purchases" href="/purchases" />
-          <SidebarItem icon={<DollarSign size={20} />} label="Payments" href="/payments" />
-          <SidebarItem icon={<ClipboardList size={20} />} label="Transactions" href="/transactions" />
-          <SidebarItem icon={<FileText size={20} />} label="Reports" href="/reports" />
-          <SidebarItem icon={<HardDrive size={20} />} label="Backup" href="/backup" />
-          <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" href="/analytics" />
-          <SidebarItem icon={<Settings size={20} />} label="Settings" href="/settings" />
-        </nav>
-        
-        <div className="mt-auto pt-4 border-t border-gray-700">
-          <div className="text-sm text-gray-400 text-center">
-            <p>VYC Accounting System</p>
-            <p>v1.0.0</p>
-          </div>
+
+        <div className="p-4 border-t">
+          {open ? (
+            <div className="flex flex-col gap-2">
+              <div className="text-sm font-medium">{companyAbbr}</div>
+              <Button onClick={handleLogout}>{t('Logout')}</Button>
+            </div>
+          ) : (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleLogout}
+              title={t('Logout')}
+            >
+              <ChevronLeft />
+            </Button>
+          )}
         </div>
       </div>
-    </div>
+    </aside>
   );
-}
+};
