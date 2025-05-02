@@ -34,5 +34,8 @@ contextBridge.exposeInMainWorld('electron', {
       version: process.env.npm_package_version || '1.0.0',
       dbPath: ipcRenderer.invoke('get-db-path')
     };
-  }
+  },
+  
+  // Debug logging
+  logDebug: (message) => ipcRenderer.invoke('log-debug', message)
 });

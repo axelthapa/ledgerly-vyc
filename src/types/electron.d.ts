@@ -34,6 +34,9 @@ interface ElectronAPI {
     version: string;
     dbPath: string;
   };
+  
+  // Debug logging
+  logDebug: (message: string) => void;
 }
 
 interface Window {

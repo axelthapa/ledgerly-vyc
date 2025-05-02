@@ -17,6 +17,7 @@ const LoginForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [appInfo, setAppInfo] = useState<any>(null);
   const [loginPattern, setLoginPattern] = useState("VYC");
+  const [adminUsername, setAdminUsername] = useState("");
 
   useEffect(() => {
     // Check if this is the first run
@@ -40,6 +41,12 @@ const LoginForm: React.FC = () => {
           if (patternResult.success && patternResult.data && patternResult.data.length > 0) {
             setLoginPattern(patternResult.data[0].value);
           }
+          
+          // Get admin username
+          const adminResult = await dbQuery('SELECT username FROM users WHERE role = ? LIMIT 1', ['admin']);
+          if (adminResult.success && adminResult.data && adminResult.data.length > 0) {
+            setAdminUsername(adminResult.data[0].username);
+          }
         }
       } catch (error) {
         console.error('Error checking first run:', error);
@@ -59,25 +66,42 @@ const LoginForm: React.FC = () => {
       return;
     }
     
-    // If username doesn't match the login pattern, show error
-    if (username !== loginPattern) {
-      toast.error("Invalid username or password");
-      return;
-    }
-    
     try {
-      const result = await dbQuery(
-        'SELECT * FROM users WHERE username = ? AND password = ?',
-        [username, password]
-      );
-      
-      if (result.success && result.data && result.data.length > 0) {
-        toast.success("Login successful");
-        localStorage.setItem("isLoggedIn", "true");
-        window.location.href = "/dashboard";
+      // First check if the login pattern matches
+      if (username === loginPattern) {
+        // If login pattern matches, try to authenticate with admin credentials
+        if (adminUsername) {
+          const result = await dbQuery(
+            'SELECT * FROM users WHERE username = ? AND password = ?',
+            [adminUsername, password]
+          );
+          
+          if (result.success && result.data && result.data.length > 0) {
+            toast.success("Login successful");
+            localStorage.setItem("isLoggedIn", "true");
+            localStorage.setItem("currentUser", JSON.stringify(result.data[0]));
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
       } else {
-        toast.error("Invalid username or password");
+        // Regular user login
+        const result = await dbQuery(
+          'SELECT * FROM users WHERE username = ? AND password = ?',
+          [username, password]
+        );
+        
+        if (result.success && result.data && result.data.length > 0) {
+          toast.success("Login successful");
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("currentUser", JSON.stringify(result.data[0]));
+          window.location.href = "/dashboard";
+          return;
+        }
       }
+      
+      // If we get here, authentication failed
+      toast.error("Invalid username or password");
     } catch (error) {
       console.error('Login error:', error);
       toast.error("An error occurred during login");
@@ -117,6 +141,9 @@ const LoginForm: React.FC = () => {
       
       toast.success("Setup completed successfully");
       setIsFirstTimeSetup(false);
+      
+      // Set admin username
+      setAdminUsername(newUsername);
     } catch (error) {
       console.error('Setup error:', error);
       toast.error("An error occurred during setup");
@@ -139,7 +166,7 @@ const LoginForm: React.FC = () => {
     <div className="flex h-screen items-center justify-center bg-gray-50">
       <Card className="w-[350px]">
         <CardHeader className="text-center">
-          <div className="text-2xl font-bold mb-2">VYC Accounting</div>
+          <div className="text-2xl font-bold mb-2">VYC</div>
           <CardDescription>Demo Trial Application</CardDescription>
           <CardDescription>
             Version: {appInfo?.version || '1.0.0'} ({appInfo?.platform || 'unknown'})

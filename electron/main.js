@@ -142,6 +142,12 @@ function showBackupReminder() {
   mainWindow.webContents.send('show-backup-reminder');
 }
 
+// Debug logging
+ipcMain.handle('log-debug', async (event, message) => {
+  console.log('[Debug]', message);
+  return { success: true };
+});
+
 // IPC handlers for file system operations
 ipcMain.handle('save-data', async (event, { fileName, data }) => {
   try {
@@ -203,11 +209,17 @@ ipcMain.handle('print-to-pdf', async (event, options) => {
 
 // IPC handlers for database operations
 ipcMain.handle('db-query', async (event, { query, params }) => {
-  return await executeQuery(query, params || []);
+  console.log('Received query:', query, 'with params:', params);
+  const result = await executeQuery(query, params || []);
+  console.log('Query result:', result);
+  return result;
 });
 
 ipcMain.handle('db-update', async (event, { query, params }) => {
-  return await executeUpdate(query, params || []);
+  console.log('Received update:', query, 'with params:', params);
+  const result = await executeUpdate(query, params || []);
+  console.log('Update result:', result);
+  return result;
 });
 
 ipcMain.handle('db-get-table', async (event, tableName) => {
