@@ -1,19 +1,18 @@
 
-import React, { useState, useEffect } from "react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Printer, Edit, Eye, Trash } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Pagination } from "@/components/ui/pagination";
-import { getServices, deleteService } from "@/utils/service-utils";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2, Search, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getServices, deleteService } from "@/utils/service-utils";
 import { formatNepaliDate, formatDate } from "@/utils/nepali-date";
-import ServiceForm from "./ServiceForm";
 import ServiceView from "./ServiceView";
-import ServiceLabelPrint from "./ServiceLabelPrint";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ServiceEditForm from "./ServiceEditForm";
+import Pagination from "../ui/pagination";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ServicesListProps {
   status: 'active' | 'completed' | 'all';
@@ -22,23 +21,20 @@ interface ServicesListProps {
 const ServicesList: React.FC<ServicesListProps> = ({ status }) => {
   const { t, isNepali } = useLanguage();
   const { toast } = useToast();
-  
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [printDialogOpen, setPrintDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const result = await getServices(status, searchQuery, currentPage);
+      const result = await getServices(status, searchQuery, currentPage, 10);
       
       if (result.success && result.data) {
         setServices(result.data.services);
@@ -51,7 +47,7 @@ const ServicesList: React.FC<ServicesListProps> = ({ status }) => {
         });
       }
     } catch (error) {
-      console.error('Error loading services:', error);
+      console.error('Error fetching services:', error);
       toast({
         title: t('Error'),
         description: t('An unexpected error occurred'),
@@ -64,35 +60,30 @@ const ServicesList: React.FC<ServicesListProps> = ({ status }) => {
   
   useEffect(() => {
     fetchServices();
-  }, [status, searchQuery, currentPage]);
+  }, [status, currentPage]);
   
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
     setCurrentPage(1);
+    fetchServices();
   };
   
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
   
-  const handleViewService = (id: string) => {
-    setSelectedService(id);
-    setViewDialogOpen(true);
+  const handleViewService = (service: any) => {
+    setSelectedService(service);
+    setIsViewDialogOpen(true);
   };
   
-  const handleEditService = (id: string) => {
-    setSelectedService(id);
-    setEditDialogOpen(true);
+  const handleEditService = (service: any) => {
+    setSelectedService(service);
+    setIsEditDialogOpen(true);
   };
   
-  const handlePrintLabel = (id: string) => {
-    setSelectedService(id);
-    setPrintDialogOpen(true);
-  };
-  
-  const confirmDelete = (id: string) => {
-    setServiceToDelete(id);
-    setDeleteDialogOpen(true);
+  const confirmDeleteService = (serviceId: string) => {
+    setServiceToDelete(serviceId);
   };
   
   const handleDeleteService = async () => {
@@ -103,11 +94,9 @@ const ServicesList: React.FC<ServicesListProps> = ({ status }) => {
       
       if (result.success) {
         toast({
-          title: t('Service Deleted'),
-          description: t('Service has been deleted successfully'),
+          title: t('Service deleted successfully'),
           variant: 'default',
         });
-        
         fetchServices();
       } else {
         toast({
@@ -124,169 +113,160 @@ const ServicesList: React.FC<ServicesListProps> = ({ status }) => {
         variant: 'destructive',
       });
     } finally {
-      setDeleteDialogOpen(false);
       setServiceToDelete(null);
     }
   };
   
-  const getStatusBadge = (status: string) => {
+  const handleEditSuccess = () => {
+    setIsEditDialogOpen(false);
+    fetchServices();
+  };
+  
+  const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline">{t('Pending')}</Badge>;
+        return 'bg-yellow-100 text-yellow-800';
       case 'in_progress':
-        return <Badge variant="secondary">{t('In Progress')}</Badge>;
+        return 'bg-blue-100 text-blue-800';
       case 'completed':
-        return <Badge variant="success">{t('Completed')}</Badge>;
+        return 'bg-green-100 text-green-800';
       case 'cancelled':
-        return <Badge variant="destructive">{t('Cancelled')}</Badge>;
+        return 'bg-red-100 text-red-800';
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  const getFormattedDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return isNepali ? formatNepaliDate(date) : formatDate(date);
+    } catch (e) {
+      return dateString;
     }
   };
   
   return (
     <div className="space-y-4">
-      <div className="flex justify-between">
+      <form onSubmit={handleSearch} className="flex space-x-2">
         <Input
-          placeholder={t('Search services...')}
+          placeholder={t('Search by customer name, device or service ID')}
           value={searchQuery}
-          onChange={handleSearch}
-          className="max-w-sm"
+          onChange={handleSearchInputChange}
+          className="flex-1"
         />
-      </div>
+        <Button type="submit" variant="outline" size="icon">
+          <Search className="h-4 w-4" />
+        </Button>
+      </form>
       
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('Service ID')}</TableHead>
-              <TableHead>{t('Customer')}</TableHead>
-              <TableHead>{t('Device')}</TableHead>
-              <TableHead>{t('Date')}</TableHead>
-              <TableHead>{t('Status')}</TableHead>
-              <TableHead className="text-right">{t('Actions')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  {t('Loading services...')}
-                </TableCell>
-              </TableRow>
-            ) : services.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  {t('No services found')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              services.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell className="font-medium">{service.id}</TableCell>
-                  <TableCell>{service.customer_name}</TableCell>
-                  <TableCell>
-                    {service.device_type}: {service.device_model}
-                  </TableCell>
-                  <TableCell>
-                    {isNepali 
-                      ? formatNepaliDate(new Date(service.service_date))
-                      : formatDate(new Date(service.service_date))
-                    }
-                  </TableCell>
-                  <TableCell>{getStatusBadge(service.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewService(service.id)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditService(service.id)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePrintLabel(service.id)}
-                      >
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => confirmDelete(service.id)}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+      {loading ? (
+        <div className="text-center py-8">
+          <p>{t('Loading services...')}</p>
+        </div>
+      ) : services.length === 0 ? (
+        <div className="text-center py-8 flex flex-col items-center">
+          <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">{t('No services found')}</p>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('Service ID')}</TableHead>
+                  <TableHead>{t('Customer Name')}</TableHead>
+                  <TableHead>{t('Device Type')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('Service Date')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('Status')}</TableHead>
+                  <TableHead className="text-right">{t('Actions')}</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+              </TableHeader>
+              <TableBody>
+                {services.map((service) => (
+                  <TableRow key={service.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewService(service)}>
+                    <TableCell className="font-medium">{service.id}</TableCell>
+                    <TableCell>{service.customer_name}</TableCell>
+                    <TableCell>{service.device_type}</TableCell>
+                    <TableCell className="hidden md:table-cell">{getFormattedDate(service.service_date)}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge className={getStatusBadgeColor(service.status)}>{t(service.status)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditService(service);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">{t('Edit')}</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            confirmDeleteService(service.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">{t('Delete')}</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+          
+          {/* View Dialog */}
+          {selectedService && (
+            <ServiceView
+              service={selectedService}
+              open={isViewDialogOpen}
+              onOpenChange={setIsViewDialogOpen}
+            />
+          )}
+          
+          {/* Edit Dialog */}
+          {selectedService && (
+            <ServiceEditForm
+              serviceId={selectedService.id}
+              open={isEditDialogOpen}
+              onOpenChange={setIsEditDialogOpen}
+              onSuccess={handleEditSuccess}
+            />
+          )}
+          
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={Boolean(serviceToDelete)} onOpenChange={() => setServiceToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('Delete Service')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('Are you sure you want to delete this service?')} {t('This action cannot be undone.')}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteService}>{t('Delete')}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
-      
-      {/* View Service Dialog */}
-      {selectedService && (
-        <ServiceView
-          serviceId={selectedService}
-          open={viewDialogOpen}
-          onOpenChange={setViewDialogOpen}
-        />
-      )}
-      
-      {/* Edit Service Dialog */}
-      {selectedService && (
-        <ServiceForm
-          serviceId={selectedService}
-          onSuccess={fetchServices}
-        />
-      )}
-      
-      {/* Print Label Dialog */}
-      {selectedService && (
-        <ServiceLabelPrint
-          serviceId={selectedService}
-          open={printDialogOpen}
-          onOpenChange={setPrintDialogOpen}
-        />
-      )}
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('Confirm Deletion')}</DialogTitle>
-            <DialogDescription>
-              {t('Are you sure you want to delete this service? This action cannot be undone.')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              {t('Cancel')}
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteService}>
-              {t('Delete')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

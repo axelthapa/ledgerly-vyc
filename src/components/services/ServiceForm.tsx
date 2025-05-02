@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { toast } from "@/components/ui/toast-utils";
 import { useToast } from "@/hooks/use-toast";
 import { createService } from "@/utils/service-utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -38,7 +37,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ serviceId, onSuccess }) => {
     service_date: new Date(),
     is_warranty: false,
     technician: "",
-    status: "pending",
+    status: "pending" as "pending" | "in_progress" | "completed" | "cancelled",
     estimated_cost: 0,
     notes: ""
   });
@@ -49,7 +48,14 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ serviceId, onSuccess }) => {
   };
   
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'status') {
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: value as "pending" | "in_progress" | "completed" | "cancelled"
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
   
   const handleSwitchChange = (name: string, checked: boolean) => {

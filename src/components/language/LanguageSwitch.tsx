@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Language } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +27,7 @@ const LanguageSwitch: React.FC = () => {
           size="sm" 
           className="h-8 w-8 px-0"
         >
-          <Language className="h-4 w-4" />
+          <Globe className="h-4 w-4" />
           <span className="sr-only">{t('Switch Language')}</span>
         </Button>
       </DropdownMenuTrigger>

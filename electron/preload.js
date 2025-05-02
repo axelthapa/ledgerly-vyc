@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld('electron', {
   
   // Event handling
   onShowBackupReminder: (callback) => {
-    ipcRenderer.on('show-backup-reminder', callback);
+    ipcRenderer.on('show-backup-reminder', (_, ...args) => callback(...args));
   },
   removeShowBackupReminder: (callback) => {
     ipcRenderer.removeListener('show-backup-reminder', callback);

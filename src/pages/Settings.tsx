@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,22 +11,26 @@ import {
   Settings as SettingsIcon, 
   User, 
   Building, 
-  CreditCard, 
   Shield, 
   Bell, 
   FileText,
   PanelRight,
   Check
 } from "lucide-react";
-import { toast } from "@/components/ui/toast-utils";
+import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getSetting, updateSetting } from "@/utils/db-operations";
+import { Switch } from "@/components/ui/switch";
 
 const Settings = () => {
+  const { t } = useLanguage();
+  const { toast } = useToast();
   const [companyInfo, setCompanyInfo] = useState({
-    name: "YourCompany Pvt. Ltd.",
+    name: "VYC",
     address: "Kathmandu, Nepal",
     phone: "+977 1234567890",
-    email: "info@yourcompany.com",
-    website: "www.yourcompany.com",
+    email: "info@vyc.com",
+    website: "www.vyc.com",
     pan: "123456789",
     currency: "NPR",
     logo: ""
@@ -41,9 +45,77 @@ const Settings = () => {
   
   const [userInfo, setUserInfo] = useState({
     name: "Admin User",
-    email: "admin@yourcompany.com",
+    email: "admin@vyc.com",
     phone: "+977 9876543210"
   });
+
+  const [creditSettings, setCreditSettings] = useState({
+    defaultCreditDays: 15,
+    enableCreditAlerts: true
+  });
+
+  const [themeSettings, setThemeSettings] = useState({
+    theme: 'system',
+    fontSize: 'medium',
+    accentColor: 'blue'
+  });
+  
+  useEffect(() => {
+    // Load settings from database
+    const loadSettings = async () => {
+      try {
+        // Company info
+        const companyNameResult = await getSetting('company_name');
+        const companyAddressResult = await getSetting('company_address');
+        const companyPhoneResult = await getSetting('company_phone');
+        const companyEmailResult = await getSetting('company_email');
+        const companyWebsiteResult = await getSetting('company_website');
+        const companyPanResult = await getSetting('company_pan');
+        const companyLogoResult = await getSetting('company_logo');
+        
+        // Credit settings
+        const creditDaysResult = await getSetting('default_credit_days');
+        const enableCreditAlertsResult = await getSetting('enable_credit_alerts');
+        
+        // Tax settings
+        const vatPercentResult = await getSetting('vat_percent');
+        const enableVatResult = await getSetting('enable_vat');
+        const panRequiredResult = await getSetting('pan_required');
+        const includeVatResult = await getSetting('include_vat_in_price');
+        
+        // Update state with loaded settings
+        setCompanyInfo(prev => ({
+          ...prev,
+          name: companyNameResult.success && companyNameResult.data ? companyNameResult.data : prev.name,
+          address: companyAddressResult.success && companyAddressResult.data ? companyAddressResult.data : prev.address,
+          phone: companyPhoneResult.success && companyPhoneResult.data ? companyPhoneResult.data : prev.phone,
+          email: companyEmailResult.success && companyEmailResult.data ? companyEmailResult.data : prev.email,
+          website: companyWebsiteResult.success && companyWebsiteResult.data ? companyWebsiteResult.data : prev.website,
+          pan: companyPanResult.success && companyPanResult.data ? companyPanResult.data : prev.pan,
+          logo: companyLogoResult.success && companyLogoResult.data ? companyLogoResult.data : prev.logo
+        }));
+        
+        setCreditSettings(prev => ({
+          ...prev,
+          defaultCreditDays: creditDaysResult.success && creditDaysResult.data ? parseInt(creditDaysResult.data) : prev.defaultCreditDays,
+          enableCreditAlerts: enableCreditAlertsResult.success && enableCreditAlertsResult.data ? enableCreditAlertsResult.data === 'true' : prev.enableCreditAlerts
+        }));
+        
+        setTaxSettings(prev => ({
+          ...prev,
+          vatPercent: vatPercentResult.success && vatPercentResult.data ? parseInt(vatPercentResult.data) : prev.vatPercent,
+          enableVat: enableVatResult.success && enableVatResult.data ? enableVatResult.data === 'true' : prev.enableVat,
+          panRequired: panRequiredResult.success && panRequiredResult.data ? panRequiredResult.data === 'true' : prev.panRequired,
+          includeVatInPrice: includeVatResult.success && includeVatResult.data ? includeVatResult.data === 'true' : prev.includeVatInPrice
+        }));
+        
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+    
+    loadSettings();
+  }, []);
 
   const handleCompanyInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -61,6 +133,21 @@ const Settings = () => {
     }));
   };
 
+  const handleCreditSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setCreditSettings(prev => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : name === 'defaultCreditDays' ? parseInt(value) : value
+    }));
+  };
+
+  const handleCreditSwitchChange = (checked: boolean) => {
+    setCreditSettings(prev => ({
+      ...prev,
+      enableCreditAlerts: checked
+    }));
+  };
+
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setUserInfo(prev => ({
@@ -69,15 +156,110 @@ const Settings = () => {
     }));
   };
   
-  const handleSaveSettings = () => {
-    toast.success("Settings saved successfully!");
+  const handleSaveCompanyInfo = async () => {
+    try {
+      await updateSetting('company_name', companyInfo.name);
+      await updateSetting('company_address', companyInfo.address);
+      await updateSetting('company_phone', companyInfo.phone);
+      await updateSetting('company_email', companyInfo.email);
+      await updateSetting('company_website', companyInfo.website);
+      await updateSetting('company_pan', companyInfo.pan);
+      
+      toast({
+        title: t('Company Info Saved'),
+        description: t('Company information has been saved successfully'),
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error saving company info:', error);
+      toast({
+        title: t('Error'),
+        description: t('Failed to save company information'),
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleSaveTaxSettings = async () => {
+    try {
+      await updateSetting('vat_percent', taxSettings.vatPercent.toString());
+      await updateSetting('enable_vat', taxSettings.enableVat.toString());
+      await updateSetting('pan_required', taxSettings.panRequired.toString());
+      await updateSetting('include_vat_in_price', taxSettings.includeVatInPrice.toString());
+      
+      toast({
+        title: t('Tax Settings Saved'),
+        description: t('Tax settings have been saved successfully'),
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error saving tax settings:', error);
+      toast({
+        title: t('Error'),
+        description: t('Failed to save tax settings'),
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleSaveCreditSettings = async () => {
+    try {
+      await updateSetting('default_credit_days', creditSettings.defaultCreditDays.toString());
+      await updateSetting('enable_credit_alerts', creditSettings.enableCreditAlerts.toString());
+      
+      toast({
+        title: t('Credit Settings Saved'),
+        description: t('Credit settings have been saved successfully'),
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error saving credit settings:', error);
+      toast({
+        title: t('Error'),
+        description: t('Failed to save credit settings'),
+        variant: 'destructive',
+      });
+    }
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      // In a real app, you'd upload this file to a server
-      toast.success("Logo uploaded successfully.");
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        setCompanyInfo(prev => ({ ...prev, logo: base64 }));
+        
+        try {
+          await updateSetting('company_logo', base64);
+          toast({
+            title: t('Logo Uploaded'),
+            description: t('Company logo has been uploaded successfully'),
+            variant: 'default',
+          });
+        } catch (error) {
+          console.error('Error saving logo:', error);
+          toast({
+            title: t('Error'),
+            description: t('Failed to save company logo'),
+            variant: 'destructive',
+          });
+        }
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleThemeChange = (theme: string) => {
+    setThemeSettings(prev => ({ ...prev, theme }));
+  };
+
+  const handleFontSizeChange = (fontSize: string) => {
+    setThemeSettings(prev => ({ ...prev, fontSize }));
+  };
+
+  const handleColorChange = (accentColor: string) => {
+    setThemeSettings(prev => ({ ...prev, accentColor }));
   };
 
   return (
@@ -85,38 +267,34 @@ const Settings = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('Settings')}</h1>
             <p className="text-muted-foreground">
-              Manage your application preferences and company information
+              {t('Manage your application preferences and company information')}
             </p>
           </div>
         </div>
 
         <Tabs defaultValue="company">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 h-auto">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 h-auto">
             <TabsTrigger value="company" className="py-2">
               <Building className="w-4 h-4 mr-2" />
-              <span>Company</span>
+              <span>{t('Company')}</span>
             </TabsTrigger>
-            <TabsTrigger value="billing" className="py-2">
-              <CreditCard className="w-4 h-4 mr-2" />
-              <span>Billing</span>
+            <TabsTrigger value="credit" className="py-2">
+              <FileText className="w-4 h-4 mr-2" />
+              <span>{t('Credit')}</span>
             </TabsTrigger>
             <TabsTrigger value="user" className="py-2">
               <User className="w-4 h-4 mr-2" />
-              <span>User Profile</span>
+              <span>{t('User Profile')}</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="py-2">
               <Shield className="w-4 h-4 mr-2" />
-              <span>Security</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="py-2">
-              <Bell className="w-4 h-4 mr-2" />
-              <span>Notifications</span>
+              <span>{t('Security')}</span>
             </TabsTrigger>
             <TabsTrigger value="appearance" className="py-2">
               <PanelRight className="w-4 h-4 mr-2" />
-              <span>Appearance</span>
+              <span>{t('Appearance')}</span>
             </TabsTrigger>
           </TabsList>
           
@@ -126,16 +304,16 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Building className="mr-2 h-4 w-4" />
-                  Company Information
+                  {t('Company Information')}
                 </CardTitle>
                 <CardDescription>
-                  Update your company details that will appear on reports and invoices
+                  {t('Update your company details that will appear on reports and invoices')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
+                    <Label htmlFor="companyName">{t('Company Name')}</Label>
                     <Input 
                       id="companyName"
                       name="name"
@@ -144,7 +322,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="companyAddress">Address</Label>
+                    <Label htmlFor="companyAddress">{t('Address')}</Label>
                     <Input 
                       id="companyAddress"
                       name="address"
@@ -156,7 +334,7 @@ const Settings = () => {
                 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="companyPhone">Phone</Label>
+                    <Label htmlFor="companyPhone">{t('Phone')}</Label>
                     <Input 
                       id="companyPhone"
                       name="phone"
@@ -165,7 +343,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="companyEmail">Email</Label>
+                    <Label htmlFor="companyEmail">{t('Email')}</Label>
                     <Input 
                       id="companyEmail"
                       name="email"
@@ -177,7 +355,7 @@ const Settings = () => {
                 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="companyWebsite">Website</Label>
+                    <Label htmlFor="companyWebsite">{t('Website')}</Label>
                     <Input 
                       id="companyWebsite"
                       name="website"
@@ -186,7 +364,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="companyPan">PAN/VAT Number</Label>
+                    <Label htmlFor="companyPan">{t('PAN/VAT Number')}</Label>
                     <Input 
                       id="companyPan"
                       name="pan"
@@ -197,7 +375,7 @@ const Settings = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="companyLogo">Company Logo</Label>
+                  <Label htmlFor="companyLogo">{t('Company Logo')}</Label>
                   <div className="flex items-center space-x-4">
                     <div className="h-16 w-16 bg-gray-100 rounded flex items-center justify-center">
                       {companyInfo.logo ? (
@@ -217,10 +395,10 @@ const Settings = () => {
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button 
-                  onClick={handleSaveSettings}
+                  onClick={handleSaveCompanyInfo}
                   className="bg-vyc-primary hover:bg-vyc-primary-dark"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save Company Info
+                  <Save className="mr-2 h-4 w-4" /> {t('Save Company Info')}
                 </Button>
               </CardFooter>
             </Card>
@@ -230,16 +408,16 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <FileText className="mr-2 h-4 w-4" />
-                  Tax Settings
+                  {t('Tax Settings')}
                 </CardTitle>
                 <CardDescription>
-                  Configure tax rates and related preferences
+                  {t('Configure tax rates and related preferences')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="vatPercent">VAT Percentage</Label>
+                    <Label htmlFor="vatPercent">{t('VAT Percentage')}</Label>
                     <Input 
                       id="vatPercent"
                       name="vatPercent"
@@ -251,7 +429,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="block mb-4">Tax Options</Label>
+                    <Label className="block mb-4">{t('Tax Options')}</Label>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <input 
@@ -262,7 +440,7 @@ const Settings = () => {
                           onChange={handleTaxSettingsChange}
                           className="h-4 w-4 rounded border-gray-300" 
                         />
-                        <label htmlFor="enableVat">Enable VAT calculation</label>
+                        <label htmlFor="enableVat">{t('Enable VAT calculation')}</label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <input 
@@ -273,7 +451,7 @@ const Settings = () => {
                           onChange={handleTaxSettingsChange}
                           className="h-4 w-4 rounded border-gray-300" 
                         />
-                        <label htmlFor="panRequired">Require PAN for customers</label>
+                        <label htmlFor="panRequired">{t('Require PAN for customers')}</label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <input 
@@ -284,7 +462,7 @@ const Settings = () => {
                           onChange={handleTaxSettingsChange}
                           className="h-4 w-4 rounded border-gray-300" 
                         />
-                        <label htmlFor="includeVatInPrice">Prices include VAT</label>
+                        <label htmlFor="includeVatInPrice">{t('Prices include VAT')}</label>
                       </div>
                     </div>
                   </div>
@@ -292,88 +470,67 @@ const Settings = () => {
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button 
-                  onClick={handleSaveSettings}
+                  onClick={handleSaveTaxSettings}
                   className="bg-vyc-primary hover:bg-vyc-primary-dark"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save Tax Settings
+                  <Save className="mr-2 h-4 w-4" /> {t('Save Tax Settings')}
                 </Button>
               </CardFooter>
             </Card>
           </TabsContent>
 
-          {/* Billing Tab */}
-          <TabsContent value="billing" className="space-y-4 mt-4">
+          {/* Credit Settings Tab */}
+          <TabsContent value="credit" className="space-y-4 mt-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Billing Settings
+                  <FileText className="mr-2 h-4 w-4" />
+                  {t('Credit Settings')}
                 </CardTitle>
                 <CardDescription>
-                  Manage your subscription and payment methods
+                  {t('Configure credit limits and payment alerts')}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-100 rounded-md p-4 flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <div>
-                      <h3 className="font-medium">Current Plan: Business</h3>
-                      <p className="text-sm text-muted-foreground">Your subscription renews on August 25, 2024</p>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultCreditDays">{t('Default Credit Limit Days')}</Label>
+                    <Input 
+                      id="defaultCreditDays"
+                      name="defaultCreditDays"
+                      type="number"
+                      min="0"
+                      value={creditSettings.defaultCreditDays}
+                      onChange={handleCreditSettingsChange}
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('Default number of days for credit period after which payment is considered overdue')}
+                    </p>
                   </div>
                   
-                  <div className="border rounded-md p-4">
-                    <h3 className="font-medium mb-2">Payment Methods</h3>
-                    <div className="flex items-center justify-between border-b pb-2">
-                      <div className="flex items-center">
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        <span>•••• •••• •••• 4242</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">Expires 08/25</span>
+                  <div className="pt-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="enableCreditAlerts"
+                        checked={creditSettings.enableCreditAlerts}
+                        onCheckedChange={handleCreditSwitchChange}
+                      />
+                      <Label htmlFor="enableCreditAlerts">{t('Enable Credit Alerts')}</Label>
                     </div>
-                    <div className="mt-2">
-                      <Button variant="outline" size="sm" className="text-xs">
-                        + Add Payment Method
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="border rounded-md p-4">
-                    <h3 className="font-medium mb-2">Billing History</h3>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left pb-2">Date</th>
-                          <th className="text-left pb-2">Amount</th>
-                          <th className="text-left pb-2">Status</th>
-                          <th className="text-right pb-2">Invoice</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="py-2">Jul 25, 2024</td>
-                          <td className="py-2">$29.99</td>
-                          <td className="py-2"><span className="text-green-500">Paid</span></td>
-                          <td className="py-2 text-right"><a href="#" className="text-blue-600">View</a></td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="py-2">Jun 25, 2024</td>
-                          <td className="py-2">$29.99</td>
-                          <td className="py-2"><span className="text-green-500">Paid</span></td>
-                          <td className="py-2 text-right"><a href="#" className="text-blue-600">View</a></td>
-                        </tr>
-                        <tr>
-                          <td className="py-2">May 25, 2024</td>
-                          <td className="py-2">$29.99</td>
-                          <td className="py-2"><span className="text-green-500">Paid</span></td>
-                          <td className="py-2 text-right"><a href="#" className="text-blue-600">View</a></td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <p className="text-sm text-muted-foreground mt-2 ml-6">
+                      {t('Show alerts in dashboard for overdue payments based on credit days')}
+                    </p>
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="flex justify-end">
+                <Button 
+                  onClick={handleSaveCreditSettings}
+                  className="bg-vyc-primary hover:bg-vyc-primary-dark"
+                >
+                  <Save className="mr-2 h-4 w-4" /> {t('Save Credit Settings')}
+                </Button>
+              </CardFooter>
             </Card>
           </TabsContent>
 
@@ -383,16 +540,16 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
-                  User Profile
+                  {t('User Profile')}
                 </CardTitle>
                 <CardDescription>
-                  Update your personal information and preferences
+                  {t('Update your personal information and preferences')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="userName">Name</Label>
+                    <Label htmlFor="userName">{t('Name')}</Label>
                     <Input 
                       id="userName"
                       name="name"
@@ -401,7 +558,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="userEmail">Email</Label>
+                    <Label htmlFor="userEmail">{t('Email')}</Label>
                     <Input 
                       id="userEmail"
                       name="email"
@@ -413,7 +570,7 @@ const Settings = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="userPhone">Phone</Label>
+                  <Label htmlFor="userPhone">{t('Phone')}</Label>
                   <Input 
                     id="userPhone"
                     name="phone"
@@ -424,10 +581,13 @@ const Settings = () => {
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button 
-                  onClick={handleSaveSettings}
+                  onClick={() => toast({
+                    title: t('User Profile Saved'),
+                    variant: 'default'
+                  })}
                   className="bg-vyc-primary hover:bg-vyc-primary-dark"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save User Profile
+                  <Save className="mr-2 h-4 w-4" /> {t('Save User Profile')}
                 </Button>
               </CardFooter>
             </Card>
@@ -439,143 +599,53 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Shield className="mr-2 h-4 w-4" />
-                  Security Settings
+                  {t('Security Settings')}
                 </CardTitle>
                 <CardDescription>
-                  Manage your account security and authentication preferences
+                  {t('Manage your account security and authentication preferences')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Label htmlFor="currentPassword">{t('Current Password')}</Label>
                     <Input 
                       id="currentPassword"
                       type="password"
-                      placeholder="Enter current password"
+                      placeholder={t('Enter current password')}
                     />
                   </div>
                   
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
+                      <Label htmlFor="newPassword">{t('New Password')}</Label>
                       <Input 
                         id="newPassword"
                         type="password"
-                        placeholder="Enter new password"
+                        placeholder={t('Enter new password')}
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Label htmlFor="confirmPassword">{t('Confirm New Password')}</Label>
                       <Input 
                         id="confirmPassword"
                         type="password"
-                        placeholder="Confirm new password"
+                        placeholder={t('Confirm new password')}
                       />
-                    </div>
-                  </div>
-                  
-                  <div className="pt-2 border-t">
-                    <h3 className="text-sm font-medium mb-2">Two-Factor Authentication</h3>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <input 
-                        type="checkbox" 
-                        id="enable2fa" 
-                        className="h-4 w-4 rounded border-gray-300" 
-                      />
-                      <label htmlFor="enable2fa">Enable two-factor authentication</label>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Enabling two-factor authentication adds an extra layer of security to your account.
-                    </p>
-                  </div>
-                  
-                  <div className="pt-2 border-t">
-                    <h3 className="text-sm font-medium mb-2">Session Management</h3>
-                    <Button variant="outline" size="sm">Sign Out From All Devices</Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      This will log you out from all devices except this one.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button 
-                  onClick={handleSaveSettings}
-                  className="bg-vyc-primary hover:bg-vyc-primary-dark"
-                >
-                  <Save className="mr-2 h-4 w-4" /> Update Security Settings
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notification Preferences
-                </CardTitle>
-                <CardDescription>
-                  Control which notifications you receive and how
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium mb-2">Email Notifications</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span>Transaction alerts</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Payment reminders</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Low inventory alerts</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Account activity</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Marketing updates</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 pt-4 border-t">
-                    <h3 className="text-sm font-medium mb-2">In-App Notifications</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span>Transaction alerts</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Due payments</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>System updates</span>
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" defaultChecked />
-                      </div>
                     </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button 
-                  onClick={handleSaveSettings}
+                  onClick={() => toast({
+                    title: t('Password Updated'),
+                    variant: 'default'
+                  })}
                   className="bg-vyc-primary hover:bg-vyc-primary-dark"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save Notification Settings
+                  <Save className="mr-2 h-4 w-4" /> {t('Update Password')}
                 </Button>
               </CardFooter>
             </Card>
@@ -587,59 +657,110 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <PanelRight className="mr-2 h-4 w-4" />
-                  Appearance Settings
+                  {t('Appearance Settings')}
                 </CardTitle>
                 <CardDescription>
-                  Customize how the application looks
+                  {t('Customize how the application looks')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="block mb-2">Theme Preference</Label>
+                    <Label className="block mb-2">{t('Theme Preference')}</Label>
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="border rounded-md p-3 flex flex-col items-center cursor-pointer bg-white">
+                      <div 
+                        className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${themeSettings.theme === 'light' ? 'border-vyc-primary' : ''}`}
+                        onClick={() => handleThemeChange('light')}
+                      >
                         <div className="h-20 w-full bg-white border rounded-md mb-2"></div>
-                        <span className="text-sm">Light</span>
+                        <span className="text-sm">{t('Light')}</span>
                       </div>
-                      <div className="border rounded-md p-3 flex flex-col items-center cursor-pointer border-vyc-primary">
+                      <div 
+                        className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${themeSettings.theme === 'system' ? 'border-vyc-primary' : ''}`}
+                        onClick={() => handleThemeChange('system')}
+                      >
                         <div className="h-20 w-full bg-gray-100 border rounded-md mb-2"></div>
-                        <span className="text-sm">System</span>
+                        <span className="text-sm">{t('System')}</span>
                       </div>
-                      <div className="border rounded-md p-3 flex flex-col items-center cursor-pointer">
+                      <div 
+                        className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${themeSettings.theme === 'dark' ? 'border-vyc-primary' : ''}`}
+                        onClick={() => handleThemeChange('dark')}
+                      >
                         <div className="h-20 w-full bg-gray-800 border rounded-md mb-2"></div>
-                        <span className="text-sm">Dark</span>
+                        <span className="text-sm">{t('Dark')}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-2 pt-4 border-t">
-                    <Label className="block mb-2">Font Size</Label>
-                    <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="small">Small</option>
-                      <option value="medium" selected>Medium</option>
-                      <option value="large">Large</option>
-                    </select>
+                    <Label className="block mb-2">{t('Font Size')}</Label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div 
+                        className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${themeSettings.fontSize === 'small' ? 'border-vyc-primary' : ''}`}
+                        onClick={() => handleFontSizeChange('small')}
+                      >
+                        <div className="h-10 w-full flex items-center justify-center">
+                          <span className="text-xs">Aa</span>
+                        </div>
+                        <span className="text-sm">{t('Small')}</span>
+                      </div>
+                      <div 
+                        className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${themeSettings.fontSize === 'medium' ? 'border-vyc-primary' : ''}`}
+                        onClick={() => handleFontSizeChange('medium')}
+                      >
+                        <div className="h-10 w-full flex items-center justify-center">
+                          <span className="text-sm">Aa</span>
+                        </div>
+                        <span className="text-sm">{t('Medium')}</span>
+                      </div>
+                      <div 
+                        className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${themeSettings.fontSize === 'large' ? 'border-vyc-primary' : ''}`}
+                        onClick={() => handleFontSizeChange('large')}
+                      >
+                        <div className="h-10 w-full flex items-center justify-center">
+                          <span className="text-base">Aa</span>
+                        </div>
+                        <span className="text-sm">{t('Large')}</span>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="space-y-2 pt-4 border-t">
-                    <Label className="block mb-2">Color Accent</Label>
+                    <Label className="block mb-2">{t('Color Accent')}</Label>
                     <div className="grid grid-cols-5 gap-4">
-                      <div className="h-8 w-8 rounded-full bg-blue-500 cursor-pointer border-2 border-white"></div>
-                      <div className="h-8 w-8 rounded-full bg-green-500 cursor-pointer border-2 border-white"></div>
-                      <div className="h-8 w-8 rounded-full bg-purple-500 cursor-pointer border-2 border-white"></div>
-                      <div className="h-8 w-8 rounded-full bg-red-500 cursor-pointer border-2 border-white"></div>
-                      <div className="h-8 w-8 rounded-full bg-amber-500 cursor-pointer border-2 border-white"></div>
+                      <div 
+                        className={`h-8 w-8 rounded-full bg-blue-500 cursor-pointer ${themeSettings.accentColor === 'blue' ? 'border-2 border-black' : 'border-2 border-white'}`}
+                        onClick={() => handleColorChange('blue')}
+                      ></div>
+                      <div 
+                        className={`h-8 w-8 rounded-full bg-green-500 cursor-pointer ${themeSettings.accentColor === 'green' ? 'border-2 border-black' : 'border-2 border-white'}`}
+                        onClick={() => handleColorChange('green')}
+                      ></div>
+                      <div 
+                        className={`h-8 w-8 rounded-full bg-purple-500 cursor-pointer ${themeSettings.accentColor === 'purple' ? 'border-2 border-black' : 'border-2 border-white'}`}
+                        onClick={() => handleColorChange('purple')}
+                      ></div>
+                      <div 
+                        className={`h-8 w-8 rounded-full bg-red-500 cursor-pointer ${themeSettings.accentColor === 'red' ? 'border-2 border-black' : 'border-2 border-white'}`}
+                        onClick={() => handleColorChange('red')}
+                      ></div>
+                      <div 
+                        className={`h-8 w-8 rounded-full bg-amber-500 cursor-pointer ${themeSettings.accentColor === 'amber' ? 'border-2 border-black' : 'border-2 border-white'}`}
+                        onClick={() => handleColorChange('amber')}
+                      ></div>
                     </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button 
-                  onClick={handleSaveSettings}
+                  onClick={() => toast({
+                    title: t('Appearance Settings Saved'),
+                    variant: 'default'
+                  })}
                   className="bg-vyc-primary hover:bg-vyc-primary-dark"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save Appearance Settings
+                  <Save className="mr-2 h-4 w-4" /> {t('Save Appearance Settings')}
                 </Button>
               </CardFooter>
             </Card>

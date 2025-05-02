@@ -2,7 +2,7 @@
 {
   "name": "vyc-accounting-electron",
   "version": "1.0.0",
-  "description": "VYC Accounting System Desktop Application",
+  "description": "VYC Demo Trial Application",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "com.vyc.accounting",
-    "productName": "VYC Accounting System",
+    "productName": "VYC",
     "directories": {
       "output": "dist"
     },

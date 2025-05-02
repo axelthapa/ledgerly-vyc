@@ -1,279 +1,366 @@
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getSetting, updateSetting } from '@/utils/db-operations';
 
-type Language = 'en' | 'ne';
+// Define the available languages
+export type Language = 'en' | 'ne';
 
+// Define the context shape
 interface LanguageContextType {
   language: Language;
-  setLanguage: (lang: Language) => void;
+  setLanguage: (language: Language) => void;
   t: (key: string) => string;
   isNepali: boolean;
 }
 
-const defaultLanguage: Language = 'en';
+// Create the context
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const LanguageContext = createContext<LanguageContextType>({
-  language: defaultLanguage,
-  setLanguage: () => {},
-  t: (key: string) => key,
-  isNepali: false
-});
-
-export const useLanguage = () => useContext(LanguageContext);
-
-// Translation dictionary 
-const translations: Record<string, Record<string, string>> = {
+// English translations
+const translations = {
   en: {
     // Dashboard
-    'Good Morning': 'Good Morning',
-    'Good Afternoon': 'Good Afternoon',
-    'Good Evening': 'Good Evening',
-    'Here\'s what\'s happening with your business today.': 'Here\'s what\'s happening with your business today.',
-    'Total Sales': 'Total Sales',
-    'Total Purchases': 'Total Purchases',
-    'Total Receivable': 'Total Receivable',
-    'Total Payable': 'Total Payable',
-    'This Month': 'This Month',
-    'Outstanding': 'Outstanding',
-    'from last month': 'from last month',
-    'Recent Customers': 'Recent Customers',
-    'Recent Suppliers': 'Recent Suppliers',
-    'Last transaction': 'Last transaction',
-    'days ago': 'days ago',
-    'Recent Activity': 'Recent Activity',
-    'Payment Alerts': 'Payment Alerts',
-    'Upcoming payments due within 7 days': 'Upcoming payments due within 7 days',
-    'Receivables': 'Receivables',
-    'Payables': 'Payables',
-    'No upcoming receivables': 'No upcoming receivables',
-    'All customer payments are up to date': 'All customer payments are up to date',
-    'No upcoming payables': 'No upcoming payables',
-    'All supplier payments are up to date': 'All supplier payments are up to date',
-    'View All Receivables': 'View All Receivables',
-    'View All Payables': 'View All Payables',
-    'Due': 'Due',
-    'overdue': 'overdue',
-    
-    // Navigation
     'Dashboard': 'Dashboard',
     'Sales': 'Sales',
     'Purchases': 'Purchases',
+    'Expenses': 'Expenses',
+    'Payments': 'Payments',
+    'Transactions': 'Transactions',
     'Customers': 'Customers',
     'Suppliers': 'Suppliers',
     'Reports': 'Reports',
     'Settings': 'Settings',
-    'Services': 'Services',
-    'Inventory': 'Inventory',
     'Analytics': 'Analytics',
-    'Logout': 'Logout',
     'Backup': 'Backup',
+    'Logout': 'Logout',
+    'Today': 'Today',
+    'This Week': 'This Week',
+    'This Month': 'This Month',
+    'This Year': 'This Year',
+    'Total Sales': 'Total Sales',
+    'Total Purchases': 'Total Purchases',
+    'Total Expenses': 'Total Expenses',
+    'Net Profit': 'Net Profit',
     
-    // General
+    // Common actions
+    'Add': 'Add',
+    'Edit': 'Edit',
+    'Delete': 'Delete',
     'Save': 'Save',
     'Cancel': 'Cancel',
-    'Delete': 'Delete',
-    'Edit': 'Edit',
-    'Add': 'Add',
     'Search': 'Search',
     'Filter': 'Filter',
-    'Status': 'Status',
-    'Actions': 'Actions',
+    'Export': 'Export',
+    'Print': 'Print',
+    'Back': 'Back',
+    'Next': 'Next',
+    'Previous': 'Previous',
+    'Submit': 'Submit',
+    
+    // Form labels
     'Name': 'Name',
-    'Address': 'Address',
-    'Phone': 'Phone',
     'Email': 'Email',
+    'Phone': 'Phone',
+    'Address': 'Address',
     'Date': 'Date',
     'Amount': 'Amount',
-    'Total': 'Total',
-    'Print': 'Print',
-    'Export': 'Export',
-    'Import': 'Import',
+    'Description': 'Description',
+    'Status': 'Status',
+    'Type': 'Type',
+    'Category': 'Category',
+    'Payment Method': 'Payment Method',
+    'Reference': 'Reference',
+    'Notes': 'Notes',
+    
+    // Customers & Suppliers
+    'Customer Details': 'Customer Details',
+    'Supplier Details': 'Supplier Details',
+    'Add Customer': 'Add Customer',
+    'Add Supplier': 'Add Supplier',
+    'Edit Customer': 'Edit Customer',
+    'Edit Supplier': 'Edit Supplier',
+    'Customer ID': 'Customer ID',
+    'Supplier ID': 'Supplier ID',
+    'Balance': 'Balance',
+    'PAN': 'PAN',
+    'Credit Days': 'Credit Days',
+    'Opening Balance': 'Opening Balance',
+    
+    // Transactions
+    'Invoice Number': 'Invoice Number',
+    'Transaction ID': 'Transaction ID',
+    'Transaction Date': 'Transaction Date',
+    'Due Date': 'Due Date',
+    'Total Amount': 'Total Amount',
+    'Paid Amount': 'Paid Amount',
+    'Due Amount': 'Due Amount',
+    'Tax': 'Tax',
+    'Discount': 'Discount',
+    'Subtotal': 'Subtotal',
+    'Grand Total': 'Grand Total',
+    'Add Item': 'Add Item',
+    
+    // Reports
+    'Sales Report': 'Sales Report',
+    'Purchase Report': 'Purchase Report',
+    'Stock Report': 'Stock Report',
+    'Tax Report': 'Tax Report',
+    'Profit & Loss': 'Profit & Loss',
+    'Customer Statement': 'Customer Statement',
+    'Supplier Statement': 'Supplier Statement',
     
     // Settings
-    'Company Settings': 'Company Settings',
+    'Company Information': 'Company Information',
     'Company Name': 'Company Name',
     'Company Address': 'Company Address',
     'Company Phone': 'Company Phone',
     'Company Email': 'Company Email',
-    'Company Logo': 'Company Logo',
-    'Change Logo': 'Change Logo',
-    'General Settings': 'General Settings',
-    'Language': 'Language',
-    'Currency': 'Currency',
-    'Credit Days': 'Credit Days',
-    'Default Credit Period': 'Default Credit Period',
-    'Fiscal Year': 'Fiscal Year',
-    'Display Settings': 'Display Settings',
-    'Date Format': 'Date Format',
+    'Company Website': 'Company Website',
+    'Tax Settings': 'Tax Settings',
     'User Settings': 'User Settings',
-    'Change Username': 'Change Username',
-    'Change Password': 'Change Password',
-    'Database Backup': 'Database Backup',
+    'Backup Settings': 'Backup Settings',
+    'Language Settings': 'Language Settings',
+    
+    // Backup & Restore
     'Backup Now': 'Backup Now',
     'Restore Backup': 'Restore Backup',
     'Last Backup': 'Last Backup',
-    'Backup Schedule': 'Backup Schedule',
+    'Backup Reminder': 'Backup Reminder',
+    'Backup Database': 'Backup Database',
+    'It\'s been a while since your last backup': 'It\'s been a while since your last backup',
+    'Backup your database now to prevent data loss': 'Backup your database now to prevent data loss',
     
-    // Services
+    // Language
+    'Switch Language': 'Switch Language',
+    'Language Changed': 'Language Changed',
+    
+    // Service Management
     'Service Management': 'Service Management',
     'New Service': 'New Service',
-    'Service Details': 'Service Details',
-    'Service ID': 'Service ID',
-    'Customer': 'Customer',
-    'Device': 'Device',
-    'Problem': 'Problem',
+    'Add New Service': 'Add New Service',
+    'Enter the details of the service to be performed.': 'Enter the details of the service to be performed.',
+    'Customer Name': 'Customer Name',
     'Service Date': 'Service Date',
-    'Status': 'Status',
+    'Device Type': 'Device Type',
+    'Device Model': 'Device Model',
+    'Serial Number': 'Serial Number',
+    'Problem Description': 'Problem Description',
     'Technician': 'Technician',
-    'Warranty': 'Warranty',
+    'Status': 'Status',
+    'Estimated Cost': 'Estimated Cost',
     'Under Warranty': 'Under Warranty',
-    'Not Under Warranty': 'Not Under Warranty',
-    'Previous Service': 'Previous Service',
-    'Service Cost': 'Service Cost',
-    'Parts Used': 'Parts Used',
-    'Labor': 'Labor',
-    'Total Cost': 'Total Cost',
-    'Print Label': 'Print Label',
-    'Service History': 'Service History',
-    'Last Service Date': 'Last Service Date',
-    'Service Status': 'Service Status',
-    'Pending': 'Pending',
-    'In Progress': 'In Progress',
-    'Completed': 'Completed',
-    'Returned': 'Returned',
-    'Cancelled': 'Cancelled',
     'Notes': 'Notes',
+    'Active Services': 'Active Services',
+    'Completed Services': 'Completed Services',
+    'All Services': 'All Services',
+    'Service Created': 'Service Created',
+    'Service has been created successfully': 'Service has been created successfully',
+    'Error': 'Error',
+    'Failed to create service': 'Failed to create service',
+    'An unexpected error occurred': 'An unexpected error occurred',
+    'Select date': 'Select date',
+    'Select device type': 'Select device type',
+    'Select status': 'Select status',
+    'Final Cost': 'Final Cost',
+    'Service Details': 'Service Details',
+    'Update Service': 'Update Service',
+    'Service updated successfully': 'Service updated successfully',
+    'Failed to update service': 'Failed to update service',
+    'Delete Service': 'Delete Service',
+    'Are you sure you want to delete this service?': 'Are you sure you want to delete this service?',
+    'This action cannot be undone.': 'This action cannot be undone.',
+    'Service deleted successfully': 'Service deleted successfully',
+    'Failed to delete service': 'Failed to delete service',
+    'Service ID': 'Service ID',
+    'Created Date': 'Created Date',
+    'Updated Date': 'Updated Date',
+    'Device Serial': 'Device Serial',
+    'Problem': 'Problem',
+    'Warranty': 'Warranty',
+    'Credit Limit Days': 'Credit Limit Days',
+    
+    // Quotes
+    'Quote of the Day': 'Quote of the Day',
+    'Services': 'Services'
   },
   
+  // Nepali translations
   ne: {
     // Dashboard
-    'Good Morning': 'शुभ प्रभात',
-    'Good Afternoon': 'शुभ मध्यान्ह',
-    'Good Evening': 'शुभ सन्ध्या',
-    'Here\'s what\'s happening with your business today.': 'आज तपाईंको व्यापारमा के भइरहेको छ।',
-    'Total Sales': 'कुल बिक्री',
-    'Total Purchases': 'कुल खरिद',
-    'Total Receivable': 'कुल प्राप्य',
-    'Total Payable': 'कुल भुक्तानी',
-    'This Month': 'यस महिना',
-    'Outstanding': 'बाँकी',
-    'from last month': 'गत महिनाबाट',
-    'Recent Customers': 'हालसालै ग्राहकहरू',
-    'Recent Suppliers': 'हालसालै विक्रेताहरू',
-    'Last transaction': 'अन्तिम कारोबार',
-    'days ago': 'दिन अघि',
-    'Recent Activity': 'हालका गतिविधिहरू',
-    'Payment Alerts': 'भुक्तानी सूचनाहरू',
-    'Upcoming payments due within 7 days': '७ दिनभित्र आउने भुक्तानीहरू',
-    'Receivables': 'प्राप्य',
-    'Payables': 'भुक्तानी',
-    'No upcoming receivables': 'कुनै आउने प्राप्य छैन',
-    'All customer payments are up to date': 'सबै ग्राहक भुक्तानीहरू अद्यावधिक छन्',
-    'No upcoming payables': 'कुनै आउने भुक्तानी छैन',
-    'All supplier payments are up to date': 'सबै विक्रेता भुक्तानीहरू अद्यावधिक छन्',
-    'View All Receivables': 'सबै प्राप्यहरू हेर्नुहोस्',
-    'View All Payables': 'सबै भुक्तानी हेर्नुहोस्',
-    'Due': 'भुक्तानी मिति',
-    'overdue': 'समय नाघेको',
-    
-    // Navigation
     'Dashboard': 'ड्यासबोर्ड',
     'Sales': 'बिक्री',
     'Purchases': 'खरिद',
+    'Expenses': 'खर्चहरू',
+    'Payments': 'भुक्तानीहरू',
+    'Transactions': 'लेनदेनहरू',
     'Customers': 'ग्राहकहरू',
-    'Suppliers': 'विक्रेताहरू',
-    'Reports': 'रिपोर्टहरू',
-    'Settings': 'सेटिङ्स',
-    'Services': 'सेवाहरू',
-    'Inventory': 'वस्तुसूची',
-    'Analytics': 'विश्लेषण',
-    'Logout': 'लगआउट',
+    'Suppliers': 'आपूर्तिकर्ताहरू',
+    'Reports': 'प्रतिवेदनहरू',
+    'Settings': 'सेटिङहरू',
+    'Analytics': 'विश्लेषणहरू',
     'Backup': 'ब्याकअप',
+    'Logout': 'लगआउट',
+    'Today': 'आज',
+    'This Week': 'यो हप्ता',
+    'This Month': 'यो महिना',
+    'This Year': 'यो वर्ष',
+    'Total Sales': 'कुल बिक्री',
+    'Total Purchases': 'कुल खरिद',
+    'Total Expenses': 'कुल खर्च',
+    'Net Profit': 'खुद नाफा',
     
-    // General
+    // Common actions
+    'Add': 'थप्नुहोस्',
+    'Edit': 'सम्पादन',
+    'Delete': 'मेटाउनुहोस्',
     'Save': 'सुरक्षित गर्नुहोस्',
     'Cancel': 'रद्द गर्नुहोस्',
-    'Delete': 'मेटाउनुहोस्',
-    'Edit': 'सम्पादन गर्नुहोस्',
-    'Add': 'थप्नुहोस्',
     'Search': 'खोज्नुहोस्',
-    'Filter': 'फिल्टर',
-    'Status': 'स्थिति',
-    'Actions': 'कार्यहरू',
+    'Filter': 'फिल्टर गर्नुहोस्',
+    'Export': 'निर्यात गर्नुहोस्',
+    'Print': 'प्रिन्ट गर्नुहोस्',
+    'Back': 'पछाडि',
+    'Next': 'अर्को',
+    'Previous': 'अघिल्लो',
+    'Submit': 'पेश गर्नुहोस्',
+    
+    // Form labels
     'Name': 'नाम',
-    'Address': 'ठेगाना',
-    'Phone': 'फोन',
     'Email': 'इमेल',
+    'Phone': 'फोन',
+    'Address': 'ठेगाना',
     'Date': 'मिति',
     'Amount': 'रकम',
-    'Total': 'जम्मा',
-    'Print': 'प्रिन्ट',
-    'Export': 'निर्यात',
-    'Import': 'आयात',
+    'Description': 'विवरण',
+    'Status': 'स्थिति',
+    'Type': 'प्रकार',
+    'Category': 'श्रेणी',
+    'Payment Method': 'भुक्तानी विधि',
+    'Reference': 'सन्दर्भ',
+    'Notes': 'टिप्पणीहरू',
+    
+    // Customers & Suppliers
+    'Customer Details': 'ग्राहक विवरण',
+    'Supplier Details': 'आपूर्तिकर्ता विवरण',
+    'Add Customer': 'ग्राहक थप्नुहोस्',
+    'Add Supplier': 'आपूर्तिकर्ता थप्नुहोस्',
+    'Edit Customer': 'ग्राहक सम्पादन गर्नुहोस्',
+    'Edit Supplier': 'आपूर्तिकर्ता सम्पादन गर्नुहोस्',
+    'Customer ID': 'ग्राहक आईडी',
+    'Supplier ID': 'आपूर्तिकर्ता आईडी',
+    'Balance': 'शेष',
+    'PAN': 'प्यान',
+    'Credit Days': 'क्रेडिट दिनहरू',
+    'Opening Balance': 'प्रारम्भिक शेष',
+    
+    // Transactions
+    'Invoice Number': 'बिल नम्बर',
+    'Transaction ID': 'लेनदेन आईडी',
+    'Transaction Date': 'लेनदेन मिति',
+    'Due Date': 'भुक्तानी मिति',
+    'Total Amount': 'कुल रकम',
+    'Paid Amount': 'भुक्तानी गरिएको',
+    'Due Amount': 'बाँकी रकम',
+    'Tax': 'कर',
+    'Discount': 'छुट',
+    'Subtotal': 'उप-कुल',
+    'Grand Total': 'कुल जम्मा',
+    'Add Item': 'वस्तु थप्नुहोस्',
+    
+    // Reports
+    'Sales Report': 'बिक्री प्रतिवेदन',
+    'Purchase Report': 'खरिद प्रतिवेदन',
+    'Stock Report': 'स्टक प्रतिवेदन',
+    'Tax Report': 'कर प्रतिवेदन',
+    'Profit & Loss': 'नाफा र नोक्सान',
+    'Customer Statement': 'ग्राहक विवरण',
+    'Supplier Statement': 'आपूर्तिकर्ता विवरण',
     
     // Settings
-    'Company Settings': 'कम्पनी सेटिङ्स',
-    'Company Name': 'कम्पनी नाम',
-    'Company Address': 'कम्पनी ठेगाना',
-    'Company Phone': 'कम्पनी फोन',
-    'Company Email': 'कम्पनी इमेल',
-    'Company Logo': 'कम्पनी लोगो',
-    'Change Logo': 'लोगो परिवर्तन गर्नुहोस्',
-    'General Settings': 'सामान्य सेटिङ्स',
-    'Language': 'भाषा',
-    'Currency': 'मुद्रा',
-    'Credit Days': 'क्रेडिट दिनहरू',
-    'Default Credit Period': 'डिफल्ट क्रेडिट अवधि',
-    'Fiscal Year': 'आर्थिक वर्ष',
-    'Display Settings': 'प्रदर्शन सेटिङ्स',
-    'Date Format': 'मिति ढाँचा',
-    'User Settings': 'प्रयोगकर्ता सेटिङ्स',
-    'Change Username': 'प्रयोगकर्ता नाम परिवर्तन गर्नुहोस्',
-    'Change Password': 'पासवर्ड परिवर्तन गर्नुहोस्',
-    'Database Backup': 'डाटाबेस ब्याकअप',
+    'Company Information': 'कम्पनी जानकारी',
+    'Company Name': 'कम्पनीको नाम',
+    'Company Address': 'कम्पनीको ठेगाना',
+    'Company Phone': 'कम्पनीको फोन',
+    'Company Email': 'कम्पनीको इमेल',
+    'Company Website': 'कम्पनीको वेबसाइट',
+    'Tax Settings': 'कर सेटिङहरू',
+    'User Settings': 'प्रयोगकर्ता सेटिङहरू',
+    'Backup Settings': 'ब्याकअप सेटिङहरू',
+    'Language Settings': 'भाषा सेटिङहरू',
+    
+    // Backup & Restore
     'Backup Now': 'अहिले ब्याकअप गर्नुहोस्',
     'Restore Backup': 'ब्याकअप पुनर्स्थापना गर्नुहोस्',
     'Last Backup': 'अन्तिम ब्याकअप',
-    'Backup Schedule': 'ब्याकअप तालिका',
+    'Backup Reminder': 'ब्याकअप रिमाइन्डर',
+    'Backup Database': 'डाटाबेस ब्याकअप गर्नुहोस्',
+    'It\'s been a while since your last backup': 'तपाईंको अन्तिम ब्याकअप देखि धेरै समय भइसकेको छ',
+    'Backup your database now to prevent data loss': 'डाटा गुम्नबाट बचाउन अहिले आफ्नो डाटाबेस ब्याकअप गर्नुहोस्',
     
-    // Services
+    // Language
+    'Switch Language': 'भाषा परिवर्तन गर्नुहोस्',
+    'Language Changed': 'भाषा परिवर्तन भयो',
+    
+    // Service Management
     'Service Management': 'सेवा व्यवस्थापन',
     'New Service': 'नयाँ सेवा',
-    'Service Details': 'सेवा विवरण',
-    'Service ID': 'सेवा आईडी',
-    'Customer': 'ग्राहक',
-    'Device': 'उपकरण',
-    'Problem': 'समस्या',
+    'Add New Service': 'नयाँ सेवा थप्नुहोस्',
+    'Enter the details of the service to be performed.': 'सम्पादन गरिने सेवाको विवरण प्रविष्ट गर्नुहोस्।',
+    'Customer Name': 'ग्राहकको नाम',
     'Service Date': 'सेवा मिति',
-    'Status': 'स्थिति',
+    'Device Type': 'उपकरण प्रकार',
+    'Device Model': 'उपकरण मोडेल',
+    'Serial Number': 'सिरियल नम्बर',
+    'Problem Description': 'समस्याको विवरण',
     'Technician': 'प्राविधिक',
-    'Warranty': 'वारेन्टी',
+    'Status': 'स्थिति',
+    'Estimated Cost': 'अनुमानित लागत',
     'Under Warranty': 'वारेन्टी अन्तर्गत',
-    'Not Under Warranty': 'वारेन्टी अन्तर्गत छैन',
-    'Previous Service': 'अघिल्लो सेवा',
-    'Service Cost': 'सेवा लागत',
-    'Parts Used': 'प्रयोग गरिएका सामग्री',
-    'Labor': 'श्रम',
-    'Total Cost': 'कुल लागत',
-    'Print Label': 'लेबल प्रिन्ट गर्नुहोस्',
-    'Service History': 'सेवा इतिहास',
-    'Last Service Date': 'अन्तिम सेवा मिति',
-    'Service Status': 'सेवा स्थिति',
-    'Pending': 'प्रक्रियामा',
-    'In Progress': 'प्रगतिमा',
-    'Completed': 'पूरा भएको',
-    'Returned': 'फिर्ता गरिएको',
-    'Cancelled': 'रद्द गरिएको',
-    'Notes': 'नोटहरू',
+    'Notes': 'टिप्पणीहरू',
+    'Active Services': 'सक्रिय सेवाहरू',
+    'Completed Services': 'पूरा भएका सेवाहरू',
+    'All Services': 'सबै सेवाहरू',
+    'Service Created': 'सेवा सिर्जना गरियो',
+    'Service has been created successfully': 'सेवा सफलतापूर्वक सिर्जना गरिएको छ',
+    'Error': 'त्रुटि',
+    'Failed to create service': 'सेवा सिर्जना गर्न असफल',
+    'An unexpected error occurred': 'अनपेक्षित त्रुटि देखा पर्‍यो',
+    'Select date': 'मिति चयन गर्नुहोस्',
+    'Select device type': 'उपकरण प्रकार चयन गर्नुहोस्',
+    'Select status': 'स्थिति चयन गर्नुहोस्',
+    'Final Cost': 'अन्तिम लागत',
+    'Service Details': 'सेवा विवरणहरू',
+    'Update Service': 'सेवा अपडेट गर्नुहोस्',
+    'Service updated successfully': 'सेवा सफलतापूर्वक अपडेट गरियो',
+    'Failed to update service': 'सेवा अपडेट गर्न असफल',
+    'Delete Service': 'सेवा मेटाउनुहोस्',
+    'Are you sure you want to delete this service?': 'के तपाईं निश्चित रूपमा यो सेवा मेटाउन चाहनुहुन्छ?',
+    'This action cannot be undone.': 'यो कार्य पूर्ववत् गर्न सकिँदैन।',
+    'Service deleted successfully': 'सेवा सफलतापूर्वक मेटाइयो',
+    'Failed to delete service': 'सेवा मेटाउन असफल',
+    'Service ID': 'सेवा आईडी',
+    'Created Date': 'सिर्जना मिति',
+    'Updated Date': 'अद्यावधिक मिति',
+    'Device Serial': 'उपकरण सिरियल',
+    'Problem': 'समस्या',
+    'Warranty': 'वारेन्टी',
+    'Credit Limit Days': 'क्रेडिट सीमा दिनहरू',
+    
+    // Quotes
+    'Quote of the Day': 'आजको उद्धरण',
+    'Services': 'सेवाहरू'
   }
 };
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(defaultLanguage);
-  const isNepali = language === 'ne';
+// Provider component
+interface LanguageProviderProps {
+  children: ReactNode;
+}
 
-  // Load language from database on first render
+export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
+  const [language, setLanguageState] = useState<Language>('en');
+  
+  // Load language setting on mount
   useEffect(() => {
     const loadLanguageSetting = async () => {
       try {
@@ -282,36 +369,46 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setLanguageState(result.data as Language);
         }
       } catch (error) {
-        console.error('Failed to load language setting:', error);
+        console.error('Error loading language setting:', error);
       }
     };
     
     loadLanguageSetting();
   }, []);
-
-  // Set language and save to database
-  const setLanguage = async (lang: Language) => {
+  
+  // Function to set language and save to database
+  const setLanguage = async (newLanguage: Language) => {
+    setLanguageState(newLanguage);
     try {
-      setLanguageState(lang);
-      await updateSetting('display_language', lang);
+      await updateSetting('display_language', newLanguage);
     } catch (error) {
-      console.error('Failed to save language setting:', error);
+      console.error('Error saving language setting:', error);
     }
   };
-
+  
   // Translation function
   const t = (key: string): string => {
-    if (translations[language] && translations[language][key]) {
-      return translations[language][key];
-    }
-    return key;
+    const currentTranslations = translations[language];
+    return currentTranslations[key as keyof typeof currentTranslations] || key;
   };
-
+  
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isNepali }}>
+    <LanguageContext.Provider value={{ 
+      language, 
+      setLanguage, 
+      t,
+      isNepali: language === 'ne'
+    }}>
       {children}
     </LanguageContext.Provider>
   );
 };
 
-export default LanguageContext;
+// Custom hook to use the language context
+export const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
+  return context;
+};
