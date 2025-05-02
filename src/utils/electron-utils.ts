@@ -48,7 +48,7 @@ export async function printToPDF(options: any) {
 }
 
 // These are the missing functions needed by ElectronFeatures.tsx and Backup.tsx
-export async function saveDataToFile(fileName: string, data: any) {
+export async function saveDataToFile(fileName: string, data: any): Promise<{ success: boolean; filePath?: string; error?: string }> {
   if (!isElectron()) {
     console.warn('saveDataToFile is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
@@ -56,7 +56,7 @@ export async function saveDataToFile(fileName: string, data: any) {
   return await window.electron.saveData({ fileName, data });
 }
 
-export async function loadDataFromFile() {
+export async function loadDataFromFile(): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isElectron()) {
     console.warn('loadDataFromFile is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
@@ -64,7 +64,7 @@ export async function loadDataFromFile() {
   return await window.electron.loadData();
 }
 
-export async function backupDatabase() {
+export async function backupDatabase(): Promise<{ success: boolean; filePath?: string; error?: string; message?: string }> {
   if (!isElectron()) {
     console.warn('backupDatabase is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
@@ -72,7 +72,7 @@ export async function backupDatabase() {
   return await window.electron.db.backup();
 }
 
-export async function restoreDatabase() {
+export async function restoreDatabase(): Promise<{ success: boolean; error?: string; message?: string }> {
   if (!isElectron()) {
     console.warn('restoreDatabase is only available in Electron');
     return { success: false, error: 'Not running in Electron' };

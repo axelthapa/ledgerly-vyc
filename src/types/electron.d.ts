@@ -6,6 +6,7 @@ interface DbResult<T = any> {
   message?: string;
   changes?: number;
   lastInsertRowid?: number;
+  filePath?: string;
 }
 
 interface ElectronAPI {
@@ -19,7 +20,7 @@ interface ElectronAPI {
     query: (query: string, params?: any[]) => Promise<DbResult>;
     update: (query: string, params?: any[]) => Promise<DbResult>;
     getTableData: (tableName: string) => Promise<DbResult>;
-    backup: () => Promise<DbResult>;
+    backup: () => Promise<DbResult & { filePath?: string }>;
     restore: () => Promise<DbResult>;
   };
   
