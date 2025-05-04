@@ -47,7 +47,7 @@ export async function printToPDF(options: any) {
   return await window.electron.printToPDF(options);
 }
 
-// These are the missing functions needed by ElectronFeatures.tsx and Backup.tsx
+// Functions needed by ElectronFeatures.tsx and Backup.tsx
 export async function saveDataToFile(fileName: string, data: any): Promise<{ success: boolean; filePath?: string; error?: string }> {
   if (!isElectron()) {
     console.warn('saveDataToFile is only available in Electron');

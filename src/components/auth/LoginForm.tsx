@@ -5,19 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast-utils";
-import { getAppInfo, dbQuery, dbUpdate } from "@/utils/electron-utils";
+import { getAppInfo, dbQuery, dbUpdate, isElectron } from "@/utils/electron-utils";
 
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
-  const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [appInfo, setAppInfo] = useState<any>(null);
-  const [loginPattern, setLoginPattern] = useState("VYC");
-  const [adminUsername, setAdminUsername] = useState("");
 
   useEffect(() => {
     // Check if this is the first run
@@ -29,23 +24,13 @@ const LoginForm: React.FC = () => {
         const info = getAppInfo();
         setAppInfo(info);
         
-        // Check if there are any users in the database
-        const result = await dbQuery('SELECT COUNT(*) as count FROM users');
-        
-        if (result.success && result.data && result.data[0].count === 0) {
-          setIsFirstTimeSetup(true);
-        } else {
-          // Load login pattern
-          const patternResult = await dbQuery('SELECT value FROM settings WHERE key = ?', ['login_pattern']);
+        // In Electron mode, check database
+        if (isElectron()) {
+          // Check if there are any users in the database
+          const result = await dbQuery('SELECT COUNT(*) as count FROM users');
           
-          if (patternResult.success && patternResult.data && patternResult.data.length > 0) {
-            setLoginPattern(patternResult.data[0].value);
-          }
-          
-          // Get admin username
-          const adminResult = await dbQuery('SELECT username FROM users WHERE role = ? LIMIT 1', ['admin']);
-          if (adminResult.success && adminResult.data && adminResult.data.length > 0) {
-            setAdminUsername(adminResult.data[0].username);
+          if (result.success && result.data && result.data[0].count === 0) {
+            setIsFirstTimeSetup(true);
           }
         }
       } catch (error) {
@@ -58,92 +43,74 @@ const LoginForm: React.FC = () => {
     checkFirstRun();
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!username || !password) {
       toast.error("Please enter both username and password");
       return;
     }
-    
-    try {
-      // First check if the login pattern matches
-      if (username === loginPattern) {
-        // If login pattern matches, try to authenticate with admin credentials
-        if (adminUsername) {
-          const result = await dbQuery(
-            'SELECT * FROM users WHERE username = ? AND password = ?',
-            [adminUsername, password]
-          );
-          
-          if (result.success && result.data && result.data.length > 0) {
-            toast.success("Login successful");
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("currentUser", JSON.stringify(result.data[0]));
-            window.location.href = "/dashboard";
-            return;
-          }
-        }
-      } else {
-        // Regular user login
-        const result = await dbQuery(
-          'SELECT * FROM users WHERE username = ? AND password = ?',
-          [username, password]
-        );
-        
-        if (result.success && result.data && result.data.length > 0) {
-          toast.success("Login successful");
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("currentUser", JSON.stringify(result.data[0]));
-          window.location.href = "/dashboard";
-          return;
-        }
+
+    // Handle VYC special login code
+    if (username === "VYC") {
+      // Special login code - check if password matches any admin credentials
+      if (password === "admin@123") {
+        loginSuccess("admin");
+        return;
       }
-      
-      // If we get here, authentication failed
-      toast.error("Invalid username or password");
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error("An error occurred during login");
     }
+    
+    // Regular login checking
+    const validCredentials = [
+      { username: "vision", password: "vision@123", role: "user" },
+      { username: "admin", password: "admin@123", role: "admin" }
+    ];
+    
+    const user = validCredentials.find(
+      user => user.username === username && user.password === password
+    );
+    
+    if (user) {
+      loginSuccess(user.role);
+    } else {
+      toast.error("Invalid username or password");
+    }
+  };
+
+  const loginSuccess = (role: string) => {
+    toast.success("Login successful");
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("currentUser", JSON.stringify({ 
+      username, 
+      role,
+      full_name: role === "admin" ? "Administrator" : "User"
+    }));
+    window.location.href = "/dashboard";
   };
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUsername || !newPassword || !confirmPassword) {
-      toast.error("Please fill all fields");
-      return;
-    }
-    
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+    if (!isElectron()) {
+      // For web version, just set default users
+      setIsFirstTimeSetup(false);
       return;
     }
     
     try {
-      // Create admin user
-      const result = await dbUpdate(
+      // Create default users
+      await dbUpdate(
         'INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)',
-        [newUsername, newPassword, 'Administrator', 'admin']
+        ["vision", "vision@123", 'Vision User', 'user']
       );
       
-      if (!result.success) {
-        toast.error("Failed to create user: " + result.error);
-        return;
-      }
-      
-      // Save login pattern
       await dbUpdate(
-        'INSERT INTO settings (key, value) VALUES (?, ?)',
-        ['login_pattern', loginPattern]
+        'INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)',
+        ["admin", "admin@123", 'Administrator', 'admin']
       );
       
       toast.success("Setup completed successfully");
       setIsFirstTimeSetup(false);
-      
-      // Set admin username
-      setAdminUsername(newUsername);
     } catch (error) {
       console.error('Setup error:', error);
       toast.error("An error occurred during setup");
@@ -169,7 +136,7 @@ const LoginForm: React.FC = () => {
           <div className="text-2xl font-bold mb-2">VYC</div>
           <CardDescription>Demo Trial Application</CardDescription>
           <CardDescription>
-            Version: {appInfo?.version || '1.0.0'} ({appInfo?.platform || 'unknown'})
+            Version: {appInfo?.version || '1.0.0'} ({appInfo?.platform || 'web'})
           </CardDescription>
         </CardHeader>
         
@@ -177,49 +144,12 @@ const LoginForm: React.FC = () => {
           // First-time setup form
           <form onSubmit={handleSetup}>
             <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="login-pattern">Login Pattern</Label>
-                <Input
-                  id="login-pattern"
-                  placeholder="Enter login pattern"
-                  value={loginPattern}
-                  onChange={(e) => setLoginPattern(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This will be used as the username to log in
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-700">
+                  First time setup: This will create default users:
+                  <br />- vision / vision@123 (User)
+                  <br />- admin / admin@123 (Admin)
                 </p>
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="new-username">Admin Username</Label>
-                <Input
-                  id="new-username"
-                  placeholder="Enter admin username"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="new-password">Admin Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
               </div>
             </CardContent>
             
@@ -253,8 +183,11 @@ const LoginForm: React.FC = () => {
               </div>
             </CardContent>
             
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-2">
               <Button type="submit" className="w-full">Log In</Button>
+              <p className="text-xs text-gray-500">
+                Default: vision / vision@123 or admin / admin@123
+              </p>
             </CardFooter>
           </form>
         )}

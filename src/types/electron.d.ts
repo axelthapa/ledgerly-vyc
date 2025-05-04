@@ -33,7 +33,7 @@ interface ElectronAPI {
     isElectron: boolean;
     platform: string;
     version: string;
-    dbPath: string;
+    dbPath: string | null;
   };
   
   // Debug logging
