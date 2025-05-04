@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast-utils";
 import { getAppInfo, dbQuery, dbUpdate, isElectron } from "@/utils/electron-utils";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -13,6 +14,7 @@ const LoginForm: React.FC = () => {
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [appInfo, setAppInfo] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     // Check if this is the first run
@@ -119,9 +121,9 @@ const LoginForm: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <Card className="w-[350px]">
-          <CardHeader className="text-center">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+        <Card className="w-[350px] border-none bg-white/10 backdrop-blur-md">
+          <CardHeader className="text-center text-white">
             <CardTitle>Loading...</CardTitle>
           </CardHeader>
         </Card>
@@ -130,12 +132,14 @@ const LoginForm: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
-      <Card className="w-[350px]">
-        <CardHeader className="text-center">
-          <div className="text-2xl font-bold mb-2">VYC</div>
-          <CardDescription>Demo Trial Application</CardDescription>
-          <CardDescription>
+    <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+      <Card className="w-[380px] border-none bg-white/10 backdrop-blur-md shadow-xl">
+        <CardHeader className="text-center pb-2">
+          <div className="text-3xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-blue-500 text-transparent bg-clip-text">VYC</div>
+          <CardDescription className="text-gray-300">
+            Management System
+          </CardDescription>
+          <CardDescription className="text-gray-300 text-xs mt-1">
             Version: {appInfo?.version || '1.0.0'} ({appInfo?.platform || 'web'})
           </CardDescription>
         </CardHeader>
@@ -144,8 +148,8 @@ const LoginForm: React.FC = () => {
           // First-time setup form
           <form onSubmit={handleSetup}>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-sm text-yellow-700">
+              <div className="p-4 bg-yellow-900/20 border border-yellow-700/20 rounded-md">
+                <p className="text-sm text-yellow-200">
                   First time setup: This will create default users:
                   <br />- vision / vision@123 (User)
                   <br />- admin / admin@123 (Admin)
@@ -154,40 +158,66 @@ const LoginForm: React.FC = () => {
             </CardContent>
             
             <CardFooter>
-              <Button type="submit" className="w-full">Complete Setup</Button>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+              >
+                Complete Setup
+              </Button>
             </CardFooter>
           </form>
         ) : (
           // Regular login form
           <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
+            <CardContent className="space-y-5 pt-3">
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-gray-300">Username</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-gray-400">
+                    <User size={16} />
+                  </span>
+                  <Input
+                    id="username"
+                    className="pl-9 bg-white/5 border-gray-700 text-white"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
               </div>
               
-              <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-300">Password</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-gray-400">
+                    <Lock size={16} />
+                  </span>
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="pl-9 pr-9 bg-white/5 border-gray-700 text-white"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-200"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             </CardContent>
             
-            <CardFooter className="flex flex-col gap-2">
-              <Button type="submit" className="w-full">Log In</Button>
-              <p className="text-xs text-gray-500">
-                Default: vision / vision@123 or admin / admin@123
-              </p>
+            <CardFooter className="flex flex-col gap-2 pt-2">
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+              >
+                Log In
+              </Button>
             </CardFooter>
           </form>
         )}
