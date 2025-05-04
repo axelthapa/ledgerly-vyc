@@ -1,166 +1,186 @@
 
-/**
- * Utility functions for interacting with Electron APIs
- */
+import { toast } from '@/components/ui/toast-utils';
+import { DbResult } from './db-operations';
 
-// Check if we're running in Electron
 export function isElectron() {
-  return window.electron !== undefined;
+  return typeof window !== 'undefined' && Boolean(window.electron);
 }
 
-// Get app info
 export function getAppInfo() {
   if (!isElectron()) {
     console.warn('getAppInfo is only available in Electron');
     return {
       isElectron: false,
       platform: 'web',
-      version: '1.0.0-dev',
+      version: '1.0.0',
       dbPath: null
     };
   }
-  return window.electron.getAppInfo();
+  
+  return window.electron?.getAppInfo();
 }
 
-// File operations
-export async function saveData(data: any) {
+export async function dbQuery(query: string, params: any[] = []): Promise<DbResult> {
   if (!isElectron()) {
-    console.warn('saveData is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.saveData(data);
-}
-
-export async function loadData() {
-  if (!isElectron()) {
-    console.warn('loadData is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.loadData();
-}
-
-export async function printToPDF(options: any) {
-  if (!isElectron()) {
-    console.warn('printToPDF is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.printToPDF(options);
-}
-
-// Functions needed by ElectronFeatures.tsx and Backup.tsx
-export async function saveDataToFile(fileName: string, data: any): Promise<{ success: boolean; filePath?: string; error?: string }> {
-  if (!isElectron()) {
-    console.warn('saveDataToFile is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.saveData({ fileName, data });
-}
-
-export async function loadDataFromFile(): Promise<{ success: boolean; data?: any; error?: string }> {
-  if (!isElectron()) {
-    console.warn('loadDataFromFile is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.loadData();
-}
-
-export async function backupDatabase(): Promise<{ success: boolean; filePath?: string; error?: string; message?: string }> {
-  if (!isElectron()) {
-    console.warn('backupDatabase is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.db.backup();
-}
-
-export async function restoreDatabase(): Promise<{ success: boolean; error?: string; message?: string }> {
-  if (!isElectron()) {
-    console.warn('restoreDatabase is only available in Electron');
-    return { success: false, error: 'Not running in Electron' };
-  }
-  return await window.electron.db.restore();
-}
-
-// Database operations
-export async function dbQuery(query: string, params: any[] = []) {
-  if (!isElectron()) {
-    console.warn('dbQuery is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
   }
   
   try {
-    // For debugging
-    console.log('Running query:', query, 'with params:', params);
-    
-    const result = await window.electron.db.query(query, params);
-    
-    // For debugging
-    console.log('Query result:', result);
-    
-    return result;
+    const result = await window.electron?.db?.query(query, params);
+    return result || { success: false, error: 'Database operation failed' };
   } catch (error) {
-    console.error('Database query error:', error);
+    console.error('DB query error:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : String(error) 
+      error: error instanceof Error ? error.message : 'Unknown database error' 
     };
   }
 }
 
-export async function dbUpdate(query: string, params: any[] = []) {
+export async function dbUpdate(query: string, params: any[] = []): Promise<DbResult> {
   if (!isElectron()) {
-    console.warn('dbUpdate is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
   }
   
   try {
-    // For debugging
-    console.log('Running update:', query, 'with params:', params);
-    
-    const result = await window.electron.db.update(query, params);
-    
-    // For debugging
-    console.log('Update result:', result);
-    
-    return result;
+    const result = await window.electron?.db?.update(query, params);
+    return result || { success: false, error: 'Database operation failed' };
   } catch (error) {
-    console.error('Database update error:', error);
+    console.error('DB update error:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : String(error) 
+      error: error instanceof Error ? error.message : 'Unknown database error' 
     };
   }
 }
 
-export async function getTableData(tableName: string) {
+// Get table data
+export async function getTableData(tableName: string): Promise<DbResult<any[]>> {
   if (!isElectron()) {
-    console.warn('getTableData is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
   }
-  return await window.electron.db.getTableData(tableName);
+  
+  try {
+    const result = await window.electron?.db?.getTableData(tableName);
+    return result || { success: false, error: `Failed to get data from ${tableName}` };
+  } catch (error) {
+    console.error(`Error getting data from ${tableName}:`, error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown database error' 
+    };
+  }
 }
 
-export async function dbBackup() {
+// Backup database
+export async function backupDatabase(): Promise<DbResult<string>> {
   if (!isElectron()) {
-    console.warn('dbBackup is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
   }
-  return await window.electron.db.backup();
+  
+  try {
+    const result = await window.electron?.db?.backup();
+    return result || { success: false, error: 'Backup operation failed' };
+  } catch (error) {
+    console.error('Database backup error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown database error',
+    };
+  }
 }
 
-export async function dbRestore() {
+// Restore database
+export async function restoreDatabase(): Promise<DbResult> {
   if (!isElectron()) {
-    console.warn('dbRestore is only available in Electron');
     return { success: false, error: 'Not running in Electron' };
   }
-  return await window.electron.db.restore();
+  
+  try {
+    const result = await window.electron?.db?.restore();
+    return result || { success: false, error: 'Restore operation failed' };
+  } catch (error) {
+    console.error('Database restore error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown database error' 
+    };
+  }
+}
+
+// Save data to file
+export async function saveData(data: any): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  if (!isElectron()) {
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    const result = await window.electron?.saveData(data);
+    return result || { success: false, error: 'Save operation failed' };
+  } catch (error) {
+    console.error('Save data error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+// Load data from file
+export async function loadData(): Promise<{ success: boolean; data?: any; error?: string }> {
+  if (!isElectron()) {
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    const result = await window.electron?.loadData();
+    return result || { success: false, error: 'Load operation failed' };
+  } catch (error) {
+    console.error('Load data error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+// Print to PDF
+export async function printToPDF(options: any = {}): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  if (!isElectron()) {
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    const result = await window.electron?.printToPDF(options);
+    return result || { success: false, error: 'Print operation failed' };
+  } catch (error) {
+    console.error('Print to PDF error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
 }
 
 // Debug logging
-export function logDebug(message: string) {
-  if (!isElectron()) {
-    console.warn('logDebug is only available in Electron');
-    console.log('[Debug]', message);
-    return;
+export function logDebug(message: string): void {
+  if (isElectron()) {
+    window.electron?.logDebug(message);
+  } else {
+    console.debug('[Debug]', message);
   }
-  return window.electron.logDebug(message);
+}
+
+// Add event listeners for backup reminders
+export function onShowBackupReminder(callback: () => void) {
+  if (isElectron() && window.electron?.onShowBackupReminder) {
+    window.electron.onShowBackupReminder(callback);
+  }
+}
+
+// Remove event listeners for backup reminders
+export function removeShowBackupReminder(callback: () => void) {
+  if (isElectron() && window.electron?.removeShowBackupReminder) {
+    window.electron.removeShowBackupReminder(callback);
+  }
 }

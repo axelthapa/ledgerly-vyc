@@ -5,16 +5,26 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ServicesList from "@/components/services/ServicesList";
 import ServiceForm from "@/components/services/ServiceForm";
+import { getCurrentFiscalYearNP, getTodayNepaliDate } from "@/utils/nepali-date";
 
 const Services: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, isNepali } = useLanguage();
   const [selectedTab, setSelectedTab] = useState("active");
   
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">{t('Service Management')}</h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t('Service Management')}</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isNepali ? (
+                <span>{getTodayNepaliDate()} | {t('Fiscal Year')}: {getCurrentFiscalYearNP()}</span>
+              ) : (
+                <span>{new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}</span>
+              )}
+            </p>
+          </div>
           <ServiceForm />
         </div>
         

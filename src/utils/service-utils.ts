@@ -22,6 +22,10 @@ export interface Service {
   estimated_cost: number;
   final_cost?: number;
   notes?: string;
+  last_service_date?: Date | string;
+  last_problems?: string;
+  is_reentry?: boolean;
+  original_service_id?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -52,6 +56,12 @@ export async function createService(service: Omit<Service, 'id'>): Promise<DbRes
       serviceDate = formatDate(serviceDate);
     }
     
+    // Format last service date if it exists
+    let lastServiceDate = service.last_service_date;
+    if (lastServiceDate instanceof Date) {
+      lastServiceDate = formatDate(lastServiceDate);
+    }
+    
     // Convert parts_used array to JSON if it exists
     const partsUsed = service.parts_used ? JSON.stringify(service.parts_used) : null;
     
@@ -60,8 +70,9 @@ export async function createService(service: Omit<Service, 'id'>): Promise<DbRes
       `INSERT INTO services (
         id, customer_id, customer_name, device_type, device_model, device_serial, 
         problem_description, service_date, is_warranty, technician, status, 
-        diagnosis, repair_notes, parts_used, estimated_cost, final_cost, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        diagnosis, repair_notes, parts_used, estimated_cost, final_cost, notes,
+        last_service_date, last_problems, is_reentry, original_service_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nextId,
         service.customer_id || null,
@@ -79,7 +90,11 @@ export async function createService(service: Omit<Service, 'id'>): Promise<DbRes
         partsUsed,
         service.estimated_cost || 0,
         service.final_cost || null,
-        service.notes || ''
+        service.notes || '',
+        lastServiceDate || null,
+        service.last_problems || '',
+        service.is_reentry ? 1 : 0,
+        service.original_service_id || null
       ]
     );
     
@@ -96,6 +111,54 @@ export async function createService(service: Omit<Service, 'id'>): Promise<DbRes
     return { success: true, data: nextId, message: 'Service created successfully' };
   } catch (error) {
     console.error('Error creating service:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+}
+
+// Create a re-entry service based on an existing service
+export async function createServiceReentry(originalServiceId: string): Promise<DbResult<string>> {
+  if (!isElectron()) {
+    return { success: false, error: 'Not running in Electron' };
+  }
+  
+  try {
+    // Get the original service
+    const originalServiceResult = await getServiceById(originalServiceId);
+    
+    if (!originalServiceResult.success || !originalServiceResult.data) {
+      return { success: false, error: 'Failed to get original service data' };
+    }
+    
+    const originalService = originalServiceResult.data;
+    
+    // Create a new service as a re-entry
+    const newService: Omit<Service, 'id'> = {
+      customer_id: originalService.customer_id,
+      customer_name: originalService.customer_name,
+      device_type: originalService.device_type,
+      device_model: originalService.device_model,
+      device_serial: originalService.device_serial,
+      problem_description: `Re-entry: ${originalService.problem_description}`,
+      service_date: new Date(),
+      is_warranty: originalService.is_warranty,
+      technician: originalService.technician,
+      status: 'pending',
+      estimated_cost: 0,
+      last_service_date: originalService.service_date,
+      last_problems: originalService.problem_description,
+      is_reentry: true,
+      original_service_id: originalService.id,
+      notes: `This is a re-entry of service ${originalService.id}.`
+    };
+    
+    // Create the new service
+    return await createService(newService);
+    
+  } catch (error) {
+    console.error('Error creating service re-entry:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : String(error) 
@@ -175,6 +238,7 @@ export async function getServices(
       
       // Convert is_warranty from 0/1 to boolean
       service.is_warranty = Boolean(service.is_warranty);
+      service.is_reentry = Boolean(service.is_reentry);
       
       return service;
     });
@@ -228,6 +292,7 @@ export async function getServiceById(id: string): Promise<DbResult<any>> {
     
     // Convert is_warranty from 0/1 to boolean
     service.is_warranty = Boolean(service.is_warranty);
+    service.is_reentry = Boolean(service.is_reentry);
     
     return { success: true, data: service };
   } catch (error) {
@@ -332,6 +397,30 @@ export async function updateService(id: string, service: Partial<Omit<Service, '
     if (service.notes !== undefined) {
       fields.push('notes = ?');
       values.push(service.notes || '');
+    }
+    
+    if (service.last_service_date !== undefined) {
+      let lastServiceDate = service.last_service_date;
+      if (lastServiceDate instanceof Date) {
+        lastServiceDate = formatDate(lastServiceDate);
+      }
+      fields.push('last_service_date = ?');
+      values.push(lastServiceDate);
+    }
+    
+    if (service.last_problems !== undefined) {
+      fields.push('last_problems = ?');
+      values.push(service.last_problems || '');
+    }
+    
+    if (service.is_reentry !== undefined) {
+      fields.push('is_reentry = ?');
+      values.push(service.is_reentry ? 1 : 0);
+    }
+    
+    if (service.original_service_id !== undefined) {
+      fields.push('original_service_id = ?');
+      values.push(service.original_service_id || null);
     }
     
     if (fields.length === 0) {
@@ -442,6 +531,7 @@ export async function getServiceHistory(
       
       // Convert is_warranty from 0/1 to boolean
       service.is_warranty = Boolean(service.is_warranty);
+      service.is_reentry = Boolean(service.is_reentry);
       
       return service;
     });

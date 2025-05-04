@@ -1,97 +1,114 @@
 
-import React, { useEffect, useState } from "react";
-import {
-  Bell,
-  Menu,
-  User
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import LanguageSwitch from "../language/LanguageSwitch";
+import React, { useState, useEffect } from "react";
+import { Bell, Menu, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getCompanyAbbreviation } from "@/utils/company-utils";
+import { formatNepaliDate } from "@/utils/nepali-date";
+import LanguageSwitch from "@/components/language/LanguageSwitch";
 
 interface TopBarProps {
-  sidebarOpen: boolean;
-  toggleSidebar: () => void;
-  onLogout: () => void;
+  onToggleSidebar: () => void;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ sidebarOpen, toggleSidebar, onLogout }) => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { t } = useLanguage();
-  const [companyAbbr, setCompanyAbbr] = useState('VYC');
-
+const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
+  const { t, isNepali } = useLanguage();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
   useEffect(() => {
-    const loadCompanyAbbr = async () => {
+    // Load user data from localStorage
+    const userData = localStorage.getItem("currentUser");
+    if (userData) {
       try {
-        const abbr = await getCompanyAbbreviation();
-        setCompanyAbbr(abbr);
-      } catch (error) {
-        console.error('Failed to load company abbreviation:', error);
+        const user = JSON.parse(userData);
+        setCurrentUser(user);
+      } catch (e) {
+        console.error("Failed to parse user data", e);
       }
-    };
-
-    loadCompanyAbbr();
+    }
+    
+    // Update time every second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
   }, []);
 
-  const goToSettings = () => {
-    navigate('/settings');
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("currentUser");
+    window.location.href = "/";
   };
-
-  const handleNotificationsClick = () => {
-    toast({
-      title: "Notifications",
-      description: "You have no new notifications",
-    });
-  };
+  
+  // Format current date and time
+  const formattedDate = isNepali 
+    ? formatNepaliDate(currentTime)
+    : currentTime.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+  
+  const formattedTime = currentTime.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
 
   return (
-    <header className="h-16 bg-vyc-primary text-white shadow-md fixed top-0 w-full z-10">
-      <div className="flex items-center justify-between h-full px-4">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-md hover:bg-vyc-primary/70 transition-colors"
-          >
+    <div className="border-b bg-white dark:bg-gray-800 py-2 px-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="icon" onClick={onToggleSidebar}>
             <Menu className="h-5 w-5" />
-          </button>
-          <div className="hidden md:block">
-            <h1 className="text-xl font-bold">{companyAbbr} - {t('Demo Trial Application')}</h1>
+            <span className="sr-only">{t('Toggle sidebar')}</span>
+          </Button>
+          
+          <div className="hidden sm:block">
+            <div className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
+              VYC
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Management System
+            </div>
+          </div>
+
+          <div className="ml-4 text-sm border-l pl-4 hidden md:block">
+            <div className="text-gray-500 dark:text-gray-300">{formattedDate}</div>
+            <div className="font-medium">{formattedTime}</div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {/* Language switch */}
+        <div className="flex items-center space-x-3">
           <LanguageSwitch />
-
-          {/* Notifications */}
-          <button
-            onClick={handleNotificationsClick}
-            className="p-2 rounded-md hover:bg-vyc-primary/70 transition-colors"
-          >
+          
+          <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
-          </button>
-
-          {/* User menu */}
-          <button
-            onClick={goToSettings}
-            className="p-2 rounded-md hover:bg-vyc-primary/70 transition-colors"
-          >
-            <User className="h-5 w-5" />
-          </button>
-
-          {/* Logout button for small screens */}
-          <button
-            onClick={onLogout}
-            className="md:hidden p-2 bg-vyc-primary/80 rounded-md hover:bg-vyc-primary/60 transition-colors"
-          >
-            {t('Logout')}
-          </button>
+            <span className="sr-only">{t('Notifications')}</span>
+            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </Button>
+          
+          <div className="hidden md:flex items-center space-x-2">
+            <div className="text-right">
+              <div className="text-sm font-medium">
+                {currentUser?.full_name || t('User')}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {currentUser?.role === 'admin' ? t('Administrator') : t('Standard User')}
+              </div>
+            </div>
+            
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
+              <LogOut className="h-5 w-5" />
+              <span className="sr-only">{t('Logout')}</span>
+            </Button>
+          </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 };
 

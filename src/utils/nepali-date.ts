@@ -11,6 +11,13 @@ const NEPALI_MONTHS = [
   'पुष', 'माघ', 'फाल्गुन', 'चैत्र'
 ];
 
+// English name of Nepali months
+const NEPALI_MONTHS_ENG = [
+  'Baisakh', 'Jestha', 'Ashar', 'Shrawan', 
+  'Bhadra', 'Ashoj', 'Kartik', 'Mangsir', 
+  'Poush', 'Magh', 'Falgun', 'Chaitra'
+];
+
 // English month names
 const ENGLISH_MONTHS = [
   'January', 'February', 'March', 'April', 
@@ -116,76 +123,170 @@ const BS_CALENDAR_DATA: Record<number, [number, number[]]> = {
   2089: [366, [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30]],
 };
 
-// Base date for conversion (1943/4/14 AD = 2000/1/1 BS)
-const BS_START_DATE = new Date(1943, 3, 14); // JavaScript months are 0-indexed
+// Latest reference date - May 4, 2025 = Baisakh 21, 2082
+const REFERENCE_BS_DATE = { year: 2082, month: 1, day: 21 }; // Baisakh 21, 2082
+const REFERENCE_AD_DATE = new Date(2025, 4, 4); // May 4, 2025
 
 /**
- * Convert AD date to BS date
+ * Convert AD date to BS date using the reference date
  */
 export function convertADToBS(date: Date): { year: number; month: number; day: number } {
-  // Days since BS start date
-  const timeDiff = date.getTime() - BS_START_DATE.getTime();
-  let daysSince = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+  // Calculate difference in days between reference date and provided date
+  const timeDiff = date.getTime() - REFERENCE_AD_DATE.getTime();
+  const diffDays = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
   
-  // Find BS year
-  let bsYear = 2000;
-  while (daysSince >= BS_CALENDAR_DATA[bsYear][0]) {
-    daysSince -= BS_CALENDAR_DATA[bsYear][0];
-    bsYear++;
+  if (diffDays === 0) {
+    return { ...REFERENCE_BS_DATE };
+  }
+  
+  let bsYear = REFERENCE_BS_DATE.year;
+  let bsMonth = REFERENCE_BS_DATE.month;
+  let bsDay = REFERENCE_BS_DATE.day;
+  
+  // Handle future dates
+  if (diffDays > 0) {
+    let remainingDays = diffDays;
     
-    if (!BS_CALENDAR_DATA[bsYear]) {
-      // Outside of our data range
-      return { year: 0, month: 0, day: 0 };
+    while (remainingDays > 0) {
+      // Days left in current month
+      const daysInMonth = BS_CALENDAR_DATA[bsYear]?.[1][bsMonth - 1] || 30;
+      const daysLeftInMonth = daysInMonth - bsDay;
+      
+      if (remainingDays <= daysLeftInMonth) {
+        bsDay += remainingDays;
+        remainingDays = 0;
+      } else {
+        remainingDays -= (daysLeftInMonth + 1);
+        bsMonth++;
+        bsDay = 1;
+        
+        if (bsMonth > 12) {
+          bsYear++;
+          bsMonth = 1;
+          
+          // Check if year exists in our data
+          if (!BS_CALENDAR_DATA[bsYear]) {
+            // Estimate for years beyond our data
+            return { 
+              year: bsYear, 
+              month: bsMonth, 
+              day: Math.min(bsDay, 30) // Assume 30 days as fallback
+            };
+          }
+        }
+      }
+    }
+  } 
+  // Handle past dates
+  else if (diffDays < 0) {
+    let remainingDays = Math.abs(diffDays);
+    
+    while (remainingDays > 0) {
+      if (bsDay > remainingDays) {
+        bsDay -= remainingDays;
+        remainingDays = 0;
+      } else {
+        remainingDays -= bsDay;
+        bsMonth--;
+        
+        if (bsMonth < 1) {
+          bsYear--;
+          bsMonth = 12;
+          
+          // Check if year exists in our data
+          if (!BS_CALENDAR_DATA[bsYear]) {
+            // Estimate for years beyond our data
+            return { 
+              year: bsYear, 
+              month: bsMonth, 
+              day: 1 // Default to first day of month
+            };
+          }
+        }
+        
+        bsDay = BS_CALENDAR_DATA[bsYear]?.[1][bsMonth - 1] || 30;
+      }
     }
   }
   
-  // Find BS month and day
-  let bsMonth = 0;
-  const daysInMonth = BS_CALENDAR_DATA[bsYear][1];
-  while (daysSince >= daysInMonth[bsMonth]) {
-    daysSince -= daysInMonth[bsMonth];
-    bsMonth++;
-  }
-  
-  // BS months are 1-indexed
-  return { 
-    year: bsYear, 
-    month: bsMonth + 1, 
-    day: daysSince + 1 
-  };
+  return { year: bsYear, month: bsMonth, day: bsDay };
 }
 
 /**
  * Convert BS date to AD date
  */
 export function convertBSToAD(bsYear: number, bsMonth: number, bsDay: number): Date {
+  // Check if this is our reference date
+  if (bsYear === REFERENCE_BS_DATE.year && 
+      bsMonth === REFERENCE_BS_DATE.month && 
+      bsDay === REFERENCE_BS_DATE.day) {
+    return new Date(REFERENCE_AD_DATE);
+  }
+  
   // Check if date is within our data range
   if (!BS_CALENDAR_DATA[bsYear] || bsMonth < 1 || bsMonth > 12 || bsDay < 1 || 
-      bsDay > BS_CALENDAR_DATA[bsYear][1][bsMonth - 1]) {
+      bsDay > (BS_CALENDAR_DATA[bsYear]?.[1][bsMonth - 1] || 30)) {
     return new Date(); // Invalid date, return current date
   }
   
-  // Calculate days since BS start date
-  let daysSince = 0;
+  // Calculate days difference from reference date
+  let daysDiff = 0;
   
-  // Add days from years
-  for (let year = 2000; year < bsYear; year++) {
-    if (BS_CALENDAR_DATA[year]) {
-      daysSince += BS_CALENDAR_DATA[year][0];
+  // For future BS dates compared to reference
+  if (bsYear > REFERENCE_BS_DATE.year || 
+      (bsYear === REFERENCE_BS_DATE.year && bsMonth > REFERENCE_BS_DATE.month) || 
+      (bsYear === REFERENCE_BS_DATE.year && bsMonth === REFERENCE_BS_DATE.month && bsDay > REFERENCE_BS_DATE.day)) {
+      
+    // Count days from reference date to target date
+    let y = REFERENCE_BS_DATE.year;
+    let m = REFERENCE_BS_DATE.month;
+    let d = REFERENCE_BS_DATE.day;
+    
+    while (y < bsYear || (y === bsYear && m < bsMonth) || (y === bsYear && m === bsMonth && d < bsDay)) {
+      daysDiff++;
+      d++;
+      
+      const daysInMonth = BS_CALENDAR_DATA[y]?.[1][m - 1] || 30;
+      if (d > daysInMonth) {
+        d = 1;
+        m++;
+        
+        if (m > 12) {
+          m = 1;
+          y++;
+        }
+      }
+    }
+  }
+  // For past BS dates compared to reference
+  else {
+    // Count days from target date to reference date
+    let y = bsYear;
+    let m = bsMonth;
+    let d = bsDay;
+    
+    while (y < REFERENCE_BS_DATE.year || 
+          (y === REFERENCE_BS_DATE.year && m < REFERENCE_BS_DATE.month) || 
+          (y === REFERENCE_BS_DATE.year && m === REFERENCE_BS_DATE.month && d < REFERENCE_BS_DATE.day)) {
+      daysDiff--;
+      d++;
+      
+      const daysInMonth = BS_CALENDAR_DATA[y]?.[1][m - 1] || 30;
+      if (d > daysInMonth) {
+        d = 1;
+        m++;
+        
+        if (m > 12) {
+          m = 1;
+          y++;
+        }
+      }
     }
   }
   
-  // Add days from months of current year
-  for (let month = 0; month < bsMonth - 1; month++) {
-    daysSince += BS_CALENDAR_DATA[bsYear][1][month];
-  }
-  
-  // Add days of current month
-  daysSince += bsDay - 1;
-  
   // Calculate AD date
-  const adDate = new Date(BS_START_DATE);
-  adDate.setDate(BS_START_DATE.getDate() + daysSince);
+  const adDate = new Date(REFERENCE_AD_DATE);
+  adDate.setDate(REFERENCE_AD_DATE.getDate() + daysDiff);
   
   return adDate;
 }
@@ -240,13 +341,8 @@ export function formatNepaliDate(date: Date): string {
     return formatReadableDate(date);
   }
   
-  const engDate = date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-  
-  return `${engDate} (BS ${bsDate.year})`;
+  // Format in Nepali style with English month name
+  return `${NEPALI_MONTHS_ENG[bsDate.month - 1]} ${bsDate.day}, ${bsDate.year} BS`;
 }
 
 // Format Nepali date in Nepali format
@@ -381,7 +477,7 @@ export function getNepaliDateRangeString(startDate: Date, endDate: Date): string
 // Get today's date in Nepali (BS) format
 export function getTodayNepaliDate(): string {
   const bs = convertADToBS(new Date());
-  return `${NEPALI_MONTHS[bs.month - 1]} ${bs.day}, ${bs.year}`;
+  return `${NEPALI_MONTHS_ENG[bs.month - 1]} ${bs.day}, ${bs.year}`;
 }
 
 // Get today's date in Nepali (BS) format with Nepali digits
