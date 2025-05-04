@@ -20,7 +20,7 @@ export function getAppInfo() {
   return window.electron?.getAppInfo();
 }
 
-export async function dbQuery(query: string, params: any[] = []): Promise<DbResult> {
+export async function dbQuery(query: string, params: any[] = []): Promise<DbResult<any>> {
   if (!isElectron()) {
     return { success: false, error: 'Not running in Electron' };
   }
@@ -37,7 +37,7 @@ export async function dbQuery(query: string, params: any[] = []): Promise<DbResu
   }
 }
 
-export async function dbUpdate(query: string, params: any[] = []): Promise<DbResult> {
+export async function dbUpdate(query: string, params: any[] = []): Promise<DbResult<any>> {
   if (!isElectron()) {
     return { success: false, error: 'Not running in Electron' };
   }
@@ -91,7 +91,7 @@ export async function backupDatabase(): Promise<DbResult<string>> {
 }
 
 // Restore database
-export async function restoreDatabase(): Promise<DbResult> {
+export async function restoreDatabase(): Promise<DbResult<void>> {
   if (!isElectron()) {
     return { success: false, error: 'Not running in Electron' };
   }
@@ -184,3 +184,4 @@ export function removeShowBackupReminder(callback: () => void) {
     window.electron.removeShowBackupReminder(callback);
   }
 }
+

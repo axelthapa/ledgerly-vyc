@@ -26,7 +26,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopBar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} onLogout={handleLogout} />
+      <TopBar 
+        onToggleSidebar={toggleSidebar} 
+        sidebarOpen={sidebarOpen} 
+        onLogout={handleLogout} 
+      />
       
       <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar open={sidebarOpen} />

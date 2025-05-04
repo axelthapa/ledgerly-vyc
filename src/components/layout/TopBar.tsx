@@ -8,9 +8,11 @@ import LanguageSwitch from "@/components/language/LanguageSwitch";
 
 interface TopBarProps {
   onToggleSidebar: () => void;
+  sidebarOpen?: boolean;
+  onLogout?: () => void;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
+const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar, sidebarOpen, onLogout }) => {
   const { t, isNepali } = useLanguage();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -36,9 +38,13 @@ const TopBar: React.FC<TopBarProps> = ({ onToggleSidebar }) => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("currentUser");
-    window.location.href = "/";
+    if (onLogout) {
+      onLogout();
+    } else {
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("currentUser");
+      window.location.href = "/";
+    }
   };
   
   // Format current date and time

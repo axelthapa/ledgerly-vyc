@@ -5,8 +5,8 @@ import { toast } from "@/components/ui/toast-utils";
 import { Download, Upload, Printer, Database, HardDrive } from "lucide-react";
 import { 
   isElectron, 
-  saveDataToFile, 
-  loadDataFromFile, 
+  saveData, 
+  loadData, 
   printToPDF, 
   getAppInfo,
   backupDatabase
@@ -35,7 +35,7 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
 
     try {
       const data = getData();
-      const result = await saveDataToFile("vyc-accounting-data.json", data);
+      const result = await saveData(data);
       
       if (result.success) {
         toast.success(`Data saved to ${result.filePath}`);
@@ -54,7 +54,7 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
     }
 
     try {
-      const result = await loadDataFromFile();
+      const result = await loadData();
       
       if (result.success && result.data) {
         onDataLoaded(result.data);
@@ -90,8 +90,8 @@ const ElectronFeatures: React.FC<ElectronFeaturesProps> = ({
     try {
       const result = await backupDatabase();
       
-      if (result.success) {
-        toast.success(`Database backed up to ${result.filePath}`);
+      if (result.success && result.data) {
+        toast.success(`Database backed up to ${result.data}`);
       } else {
         toast.error(`Failed to backup: ${result.error}`);
       }

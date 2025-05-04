@@ -1,8 +1,8 @@
+
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/toast-utils";
 import { getCurrentFiscalYear } from "@/utils/nepali-fiscal-year";
@@ -55,9 +55,9 @@ const Backup = () => {
       const result = await backupDatabase();
       clearInterval(progressInterval);
       
-      if (result.success) {
+      if (result.success && result.data) {
         setBackupProgress(100);
-        toast.success(`Database backed up to ${result.filePath}`);
+        toast.success(`Database backed up to ${result.data}`);
       } else {
         toast.error(`Backup failed: ${result.error}`);
       }
